@@ -4,13 +4,14 @@ self.addEventListener('push', event => {
     const options = {
         body: data.body,
         icon: 'https://via.placeholder.com/128',
-        // Δόνηση: 500ms δόνηση, 100ms παύση, 500ms δόνηση (επαναλαμβανόμενο)
-        vibrate: [500, 100, 500, 100, 500, 100, 500],
-        data: { url: data.url },
         badge: 'https://via.placeholder.com/128',
+        // Πιο έντονη δόνηση: 1 δευτερόλεπτο δόνηση, μισό δευτερόλεπτο παύση (3 φορές)
+        vibrate: [1000, 500, 1000, 500, 1000, 500, 1000],
+        data: { url: data.url },
         tag: 'delivery-alert',
         renotify: true,
-        requireInteraction: true // Η ειδοποίηση δεν εξαφανίζεται μόνη της
+        requireInteraction: true,
+        silent: false // Επιβάλλει να ΜΗΝ είναι αθόρυβο
     };
 
     event.waitUntil(

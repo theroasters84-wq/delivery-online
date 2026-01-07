@@ -11,7 +11,6 @@ const io = new Server(server);
 app.use(express.json());
 app.use(express.static('public'));
 
-// === ΡΥΘΜΙΣΗ VAPID KEYS ===
 const publicVapidKey = 'BLWh5oe7cn7f1WZjxkYAUoJiWimKmiQ4psQ-2CkdxXNx2HukkF3ExB4RmUHDakiwTFyHzcs5SKVpRUeAR_pZUMs';
 const privateVapidKey = 'h0TuE6vul1BuU5EpmNQBVyKe7sgGMb_mgf5h66CgPYU';
 
@@ -28,14 +27,10 @@ io.on('connection', (socket) => {
 
     socket.on('subscribe-push', (subscription) => {
         subscriptions[socket.id] = subscription;
-        console.log('Push Subscription received');
     });
 
     socket.on('call-driver', (data) => {
-        // 1. Κανονικό σήμα (για ανοιχτή οθόνη)
         io.to(data.driverId).emit('new-order', { time: data.time });
-
-        // 2. Push Notification (για κλειστό κινητό)
         const sub = subscriptions[data.driverId];
         if (sub) {
             const payload = JSON.stringify({
@@ -43,8 +38,14 @@ io.on('connection', (socket) => {
                 body: `Νέα παραγγελία - Ώρα: ${data.time}`,
                 url: '/driver.html'
             });
-            webpush.sendNotification(sub, payload).catch(err => console.error('Push Error:', err));
+            webpush.sendNotification(sub, payload).catch(err => console.error(err));
         }
+    });
+
+    // ΔΙΟΡΘΩΣΗ ΕΔΩ: Στέλνουμε σε ΟΛΟΥΣ ότι η παραγγελία έγινε αποδεκτή
+    socket.on('order-accepted', (data) => {
+        console.log("Αποδοχή από:", data.driverName);
+        io.emit('driver-accepted', data); 
     });
 
     socket.on('disconnect', () => {
@@ -55,4 +56,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`Server started on port ${PORT}`));

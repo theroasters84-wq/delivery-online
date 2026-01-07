@@ -7,15 +7,19 @@ self.addEventListener('push', event => {
         icon: 'https://via.placeholder.com/128',
         badge: 'https://via.placeholder.com/128',
         
-        // Μοτίβο δόνησης: Δονείται για 1 δευτερόλεπτο, σταματάει για μισό (επαναλαμβανόμενο)
-        vibrate: [1000, 500, 1000, 500, 1000, 500, 1000, 500, 1000],
+        // Μοτίβο δόνησης που δεν σταματάει εύκολα: 
+        // 2 δευτερόλεπτα δόνηση, 200ms παύση (πολύ επιθετικό)
+        vibrate: [2000, 200, 2000, 200, 2000, 200, 2000],
         
         data: { url: data.url },
-        tag: 'delivery-alert',
+        tag: 'urgent-delivery',
         renotify: true,
-        requireInteraction: true, // ΔΕΝ φεύγει από την οθόνη αν δεν την πατήσεις
-        priority: 'high',         // Λέει στο Android ότι είναι επείγον
-        urgency: 'high'
+        requireInteraction: true,
+        
+        // Αυτά βοηθούν το Android να το δει σαν "Συναγερμό"
+        priority: 'high',
+        dir: 'ltr',
+        timestamp: Date.now()
     };
 
     event.waitUntil(

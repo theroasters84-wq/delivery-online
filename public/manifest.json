@@ -1,14 +1,20 @@
 {
   "name": "The Roasters Delivery",
-  "short_name": "Delivery",
+  "short_name": "Roasters",
   "start_url": "/driver.html",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#000000",
+  "background_color": "#121212",
+  "theme_color": "#00ff00",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "https://via.placeholder.com/192",
       "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://via.placeholder.com/512",
+      "sizes": "512x512",
       "type": "image/png"
     }
   ]

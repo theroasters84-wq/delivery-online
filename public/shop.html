@@ -5,14 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Roasters - Shop Panel</title>
     
+    <link rel="manifest" href="/manifest.json">
     <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/924/924514.png">
+    <meta name="theme-color" content="#e67e22">
+    <meta name="apple-mobile-web-app-capable" content="yes">
 
     <style>
         body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #f0f2f5; padding: 20px; margin: 0; }
         .container { max-width: 600px; margin: auto; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
         h1 { color: #1a1a1a; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
         
-        /* Λίστα Ντελιβεράδων */
         .driver-box { 
             background: #fff; 
             padding: 20px; 
@@ -27,7 +29,6 @@
         .driver-box:hover { border-color: #e67e22; transform: translateY(-2px); }
         .driver-name { font-size: 1.3em; font-weight: bold; color: #333; }
         
-        /* Κουμπί Κλήσης */
         .btn-call { 
             background: #e67e22; 
             color: white; 
@@ -41,7 +42,6 @@
         }
         .btn-call:active { transform: translateY(2px); box-shadow: none; }
 
-        /* Οθόνη Κατάστασης */
         #status-display { 
             margin-top: 30px; 
             padding: 30px; 
@@ -54,7 +54,6 @@
             transition: all 0.4s ease;
         }
 
-        /* Στυλ όταν ο ντελιβεράς αποδέχεται */
         .status-accepted { 
             background: #27ae60 !important; 
             color: white !important; 
@@ -93,7 +92,6 @@
         const driverList = document.getElementById('driver-list');
         const successSound = document.getElementById('success-sound');
 
-        // Λήψη λίστας ενεργών ντελιβεράδων
         socket.on('update-drivers', (drivers) => {
             if (Object.keys(drivers).length === 0) {
                 driverList.innerHTML = '<p class="no-drivers">❌ Κανένας ντελιβεράς online</p>';
@@ -110,7 +108,6 @@
             }
         });
 
-        // Ενέργεια όταν πατάμε "Κλήση"
         function callDriver(id, name) {
             const time = new Date().toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' });
             socket.emit('call-driver', { driverId: id, time: time });
@@ -122,15 +119,11 @@
             statusDisplay.style.borderColor = "#ffeeba";
         }
 
-        // Ενημέρωση όταν ο ντελιβεράς πατήσει "Αποδοχή"
         socket.on('driver-accepted', (data) => {
             statusDisplay.innerText = "✅ Ο " + data.driverName + " ΑΠΟΔΕΧΤΗΚΕ!";
             statusDisplay.classList.add('status-accepted');
-            
-            // Παίζει ήχο στο μαγαζί
             successSound.play();
 
-            // Επαναφορά στην αρχική κατάσταση μετά από 10 δευτερόλεπτα
             setTimeout(() => {
                 statusDisplay.innerText = "ΕΤΟΙΜΟ ΓΙΑ ΚΛΗΣΗ";
                 statusDisplay.classList.remove('status-accepted');
@@ -139,6 +132,11 @@
                 statusDisplay.style.borderColor = "#ddd";
             }, 10000);
         });
+
+        // Register Service Worker for Shop (Optional but helps with PWA)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js');
+        }
     </script>
 </body>
 </html>

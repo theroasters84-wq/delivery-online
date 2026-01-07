@@ -1,34 +1,41 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const path = require('path');
-
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
 app.use(express.static('public'));
 
-io.on('connection', (socket) => {
-    console.log('Ένας χρήστης συνδέθηκε');
+let drivers = {}; // Εδώ αποθηκεύουμε τους online ντελιβεράδες
 
-    // Όταν το μαγαζί καλεί ντελιβερά
-    socket.on('new-order', (data) => {
-        io.emit('new-order', data);
+io.on('connection', (socket) => {
+    // Όταν συνδέεται ντελιβεράς και στέλνει το όνομά του
+    socket.on('driver-login', (name) => {
+        drivers[socket.id] = name;
+        io.emit('update-drivers', drivers); // Ενημέρωση του μαγαζιού
     });
 
-    // Όταν ο ντελιβεράς αποδέχεται την κλήση
+    // Κλήση συγκεκριμένου ντελιβερά
+    socket.on('call-driver', (data) => {
+        io.to(data.driverId).emit('new-order', { time: data.time });
+    });
+
+    // Αποδοχή παραγγελίας
     socket.on('order-accepted', (data) => {
-        console.log('Η παραγγελία έγινε αποδεκτή από:', data.driverName);
         io.emit('driver-accepted', data);
     });
 
+    // Ακύρωση από το μαγαζί
+    socket.on('cancel-order', () => {
+        io.emit('order-cancelled');
+    });
+
     socket.on('disconnect', () => {
-        console.log('Ένας χρήστης αποσυνδέθηκε');
+        delete drivers[socket.id];
+        io.emit('update-drivers', drivers);
     });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

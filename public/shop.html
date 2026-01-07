@@ -1,47 +1,49 @@
 <!DOCTYPE html>
 <html lang="el">
 <head>
-  <meta charset="UTF-8">
-  <title>Μαγαζί</title>
-  <script src="/socket.io/socket.io.js"></script>
-  <style>
-    body { font-family: Arial; padding: 20px; }
-    h1 { font-size: 36px; }
-    #drivers { margin-top:20px; }
-    .driver-box {
-      padding:20px;
-      margin:10px 0;
-      background:#1abc9c;
-      color:#000;
-      font-size:22px;
-      cursor:pointer;
-      border-radius:8px;
-    }
-    .driver-box:hover { background:#16a085; color:#fff; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shop Panel - The Roasters</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #f4f4f4; padding: 20px; }
+        button { background: #e67e22; color: white; border: none; padding: 20px 40px; border-radius: 10px; font-size: 1.5em; cursor: pointer; box-shadow: 0 4px #d35400; }
+        button:active { box-shadow: 0 2px #d35400; transform: translateY(2px); }
+        #log { margin-top: 30px; background: white; padding: 15px; border-radius: 10px; min-height: 100px; border: 1px solid #ddd; }
+        .accepted { color: #27ae60; font-weight: bold; border-bottom: 1px solid #eee; padding: 5px; }
+    </style>
 </head>
 <body>
+    <h1>The Roasters - Κεντρικό</h1>
+    <button onclick="sendOrder()">🔔 ΚΛΗΣΗ ΝΤΕΛΙΒΕΡΑ</button>
 
-<h1>Μαγαζί</h1>
-<div id="drivers">Φόρτωση...</div>
+    <div id="log">
+        <p style="color: #888;">Ιστορικό κλήσεων...</p>
+    </div>
 
-<script>
-  const socket = io();
-  const container = document.getElementById("drivers");
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const log = document.getElementById('log');
 
-  socket.on("drivers-list", (list) => {
-    container.innerHTML = "";
-    list.forEach(name => {
-      const div = document.createElement("div");
-      div.className = "driver-box";
-      div.textContent = name;
-      div.addEventListener("click", () => {
-        socket.emit("call-driver", name);
-      });
-      container.appendChild(div);
-    });
-  });
-</script>
+        function sendOrder() {
+            const time = new Date().toLocaleTimeString();
+            socket.emit('new-order', { time: time });
+            
+            const p = document.createElement('p');
+            p.innerText = `[${time}] Η κλήση στάλθηκε...`;
+            log.prepend(p);
+        }
 
+        // Λήψη επιβεβαίωσης από τον ντελιβερά
+        socket.on('driver-accepted', (data) => {
+            const p = document.createElement('p');
+            p.className = "accepted";
+            p.innerText = `✅ Ο ${data.driverName} αποδέχτηκε την κλήση!`;
+            log.prepend(p);
+            
+            // Ήχος επιβεβαίωσης στο μαγαζί
+            new Audio('https://actions.google.com/sounds/v1/notifications/positive_notification.ogg').play();
+        });
+    </script>
 </body>
 </html>

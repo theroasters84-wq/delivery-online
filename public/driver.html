@@ -1,100 +1,78 @@
 <!DOCTYPE html>
 <html lang="el">
 <head>
-  <meta charset="UTF-8" />
-  <title>Ντελιβεράς</title>
-  <script src="/socket.io/socket.io.js"></script>
-  <style>
-    body {
-      margin:0;
-      font-family: Arial, sans-serif;
-      background:#000;
-      color:#fff;
-      display:flex;
-      justify-content:center;
-      align-items:center;
-      height:100vh;
-    }
-    .box {
-      text-align:center;
-      width:90%;
-      max-width:400px;
-    }
-    input {
-      width:100%;
-      padding:15px;
-      font-size:20px;
-      margin-bottom:10px;
-      text-align:center;
-    }
-    button {
-      width:100%;
-      padding:15px;
-      font-size:22px;
-      background:#1abc9c;
-      border:none;
-      color:#000;
-      cursor:pointer;
-    }
-    #call {
-      display:none;
-    }
-    #call h1 {
-      font-size:40px;
-      margin-bottom:20px;
-    }
-    #accept {
-      background:red;
-      color:white;
-      font-size:30px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver - Delivery Online</title>
+    <link rel="manifest" href="/manifest.json">
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background: #1a1a1a; color: white; padding: 20px; }
+        .order-card { background: #333; padding: 20px; border-radius: 15px; margin-top: 20px; border: 2px solid #00ff00; }
+        #status { color: #888; font-size: 0.9em; }
+        button { background: #00ff00; color: black; border: none; padding: 15px 30px; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    </style>
 </head>
 <body>
 
-<div class="box">
+    <h1>Πάνελ Ντελιβερά</h1>
+    <p id="status">Σύνδεση...</p>
 
-  <!-- LOGIN -->
-  <div id="login">
-    <h2>Όνομα ντελιβερά</h2>
-    <input id="name" placeholder="γράψε όνομα" />
-    <button onclick="login()">Σύνδεση</button>
-  </div>
+    <div id="orders">
+        <p>Αναμονή για παραγγελίες...</p>
+    </div>
 
-  <!-- CALL SCREEN -->
-  <div id="call">
-    <h1>📢 ΣΕ ΚΑΛΟΥΝ</h1>
-    <button id="accept" onclick="accept()">ΤΟ ΠΗΡΑ</button>
-  </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const statusText = document.getElementById('status');
+        const ordersDiv = document.getElementById('orders');
 
-</div>
+        // 1. Ζήτηση άδειας για Ειδοποιήσεις
+        if ("Notification" in window) {
+            Notification.requestPermission().then(permission => {
+                if (permission === "granted") {
+                    console.log("Η άδεια για ειδοποιήσεις δόθηκε!");
+                }
+            });
+        }
 
-<audio id="sound" src="sounds/alert.mp3" loop></audio>
+        // 2. Εγγραφή του Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('Service Worker Registered!', reg))
+                .catch(err => console.error('Service Worker Error', err));
+        }
 
-<script>
-  const socket = io();
-  const sound = document.getElementById("sound");
+        socket.on('connect', () => {
+            statusText.innerText = "Online - Έτοιμος για παραγγελίες";
+            statusText.style.color = "#00ff00";
+        });
 
-  function login() {
-    const name = document.getElementById("name").value.trim();
-    if (!name) return alert("Βάλε όνομα");
-    socket.emit("register-driver", name);
-    document.getElementById("login").style.display = "none";
-    document.body.style.background = "#111";
-  }
+        socket.on('new-order', (data) => {
+            // Παίζει ήχο και δόνηση αν η σελίδα είναι ανοιχτή
+            playNotification();
+            
+            ordersDiv.innerHTML = `
+                <div class="order-card">
+                    <h2>ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ!</h2>
+                    <p>Ώρα: ${data.time}</p>
+                    <button onclick="confirmOrder()">Αποδοχή</button>
+                </div>
+            `;
+        });
 
-  socket.on("ring", () => {
-    document.getElementById("call").style.display = "block";
-    sound.play();
-  });
+        function playNotification() {
+            const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+            audio.play();
+            if (navigator.vibrate) {
+                navigator.vibrate([200, 100, 200]);
+            }
+        }
 
-  function accept() {
-    sound.pause();
-    sound.currentTime = 0;
-    document.getElementById("call").style.display = "none";
-    socket.emit("driver-accepted");
-  }
-</script>
-
+        function confirmOrder() {
+            alert("Η παραγγελία έγινε αποδεκτή!");
+            ordersDiv.innerHTML = "<p>Αναμονή για παραγγελίες...</p>";
+        }
+    </script>
 </body>
 </html>

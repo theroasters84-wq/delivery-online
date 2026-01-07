@@ -3,126 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Driver Panel - The Roasters</title>
+    <title>Driver Panel</title>
     <style>
         body { font-family: sans-serif; text-align: center; background: #121212; color: white; padding: 20px; }
-        .container { max-width: 400px; margin: auto; }
-        
-        /* Κουτιά και κουμπιά */
-        input { padding: 15px; width: 80%; border-radius: 10px; border: 1px solid #444; background: #222; color: white; margin-bottom: 10px; font-size: 16px; }
-        .btn-main { background: #00ff00; color: black; border: none; padding: 15px 30px; border-radius: 10px; font-weight: bold; width: 85%; cursor: pointer; font-size: 16px; }
-        .btn-logout { background: #ff4444; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-top: 10px; font-size: 12px; }
-        
-        /* Η κάρτα της παραγγελίας */
-        .order-card { background: #1e1e1e; padding: 25px; border-radius: 20px; border: 4px solid #ff0000; margin-top: 20px; }
-        .blink { animation: blinker 0.8s linear infinite; }
-        @keyframes blinker { 50% { opacity: 0; } }
+        input, button { padding: 15px; width: 85%; border-radius: 10px; margin-bottom: 15px; font-size: 1.1em; border: none; }
+        .btn-main { background: #00ff00; color: black; font-weight: bold; }
+        .order-card { background: #1e1e1e; padding: 20px; border-radius: 20px; border: 4px solid #ff0000; margin-top: 20px; }
     </style>
 </head>
 <body>
+    <h1>The Roasters ☕</h1>
 
-    <div class="container">
-        <h1>The Roasters ☕</h1>
-
-        <div id="login-section">
-            <p>Ποιος ντελιβεράς είσαι;</p>
-            <input type="text" id="driver-name-input" placeholder="Γράψε το όνομά σου...">
-            <button class="btn-main" onclick="login()">ΕΝΕΡΓΟΠΟΙΗΣΗ & ΗΧΟΣ</button>
-        </div>
-
-        <div id="profile-section" style="display:none;">
-            <h2 id="display-name" style="color:#00ff00; margin-bottom:5px;"></h2>
-            <button class="btn-logout" onclick="logout()">ΑΛΛΑΓΗ ΟΝΟΜΑΤΟΣ (LOGOUT)</button>
-            <hr style="border:0; border-top:1px solid #333; margin:20px 0;">
-            <p id="status">🟢 Περιμένω παραγγελία...</p>
-        </div>
-
-        <div id="orders-area"></div>
+    <div id="login-section">
+        <input type="text" id="driver-name-input" placeholder="Το όνομά σου...">
+        <button class="btn-main" onclick="login()">ΕΝΕΡΓΟΠΟΙΗΣΗ & ΗΧΟΣ</button>
     </div>
+
+    <div id="profile-section" style="display:none;">
+        <h2 id="display-name"></h2>
+        <button onclick="logout()" style="background:#444; color:white; width:auto; font-size:0.8em;">Αλλαγή Ονόματος</button>
+        <p id="status">🟢 Online</p>
+    </div>
+
+    <div id="orders-area"></div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
+        const publicVapidKey = 'BLWh5oe7cn7f1WZjxkYAUoJiWimKmiQ4psQ-2CkdxXNx2HukkF3ExB4RmUHDakiwTFyHzcs5SKVpRUeAR_pZUMs';
         const alertAudio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-        
-        // Στοιχεία σελίδας
-        const loginSection = document.getElementById('login-section');
-        const profileSection = document.getElementById('profile-section');
-        const displayName = document.getElementById('display-name');
-        const ordersArea = document.getElementById('orders-area');
 
-        // Έλεγχος αν υπάρχει ήδη όνομα στη μνήμη του κινητού
         let savedName = localStorage.getItem('driverName');
-        if (savedName) {
-            setupDriver(savedName);
+        if (savedName) setupDriver(savedName);
+
+        async function login() {
+            const name = document.getElementById('driver-name-input').value;
+            if (!name) return alert("Βάλε όνομα!");
+            localStorage.setItem('driverName', name);
+            alertAudio.play().then(() => { alertAudio.pause(); alertAudio.currentTime = 0; });
+            setupDriver(name);
         }
 
-        function login() {
-            const nameInput = document.getElementById('driver-name-input').value;
-            if (!nameInput.trim()) return alert("Βάλε ένα όνομα!");
-
-            localStorage.setItem('driverName', nameInput);
-            
-            // Ενεργοποίηση ήχου (σημαντικό για τα κινητά)
-            alertAudio.play().then(() => {
-                alertAudio.pause();
-                alertAudio.currentTime = 0;
-            }).catch(e => console.log("Audio unlock failed"));
-
-            setupDriver(nameInput);
-        }
-
-        function setupDriver(name) {
-            loginSection.style.display = "none";
-            profileSection.style.display = "block";
-            displayName.innerText = "Ντελιβεράς: " + name;
-            
-            // Ενημερώνουμε τον server ότι είμαστε online
+        async function setupDriver(name) {
+            document.getElementById('login-section').style.display = "none";
+            document.getElementById('profile-section').style.display = "block";
+            document.getElementById('display-name').innerText = name;
             socket.emit('driver-login', name);
-        }
 
-        function logout() {
-            if (confirm("Θέλεις να αλλάξεις όνομα;")) {
-                localStorage.removeItem('driverName');
-                location.reload(); // Ανανέωση για να γυρίσει στη φόρμα εισόδου
+            // Εγγραφή στο Push Notification
+            if ('serviceWorker' in navigator) {
+                const register = await navigator.serviceWorker.ready;
+                const subscription = await register.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: publicVapidKey
+                });
+                socket.emit('subscribe-push', subscription);
             }
         }
 
-        // Λήψη παραγγελίας
+        function logout() { localStorage.removeItem('driverName'); location.reload(); }
+
         socket.on('new-order', (data) => {
-            alertAudio.loop = true;
-            alertAudio.play();
-            if (navigator.vibrate) navigator.vibrate([500, 300, 500, 300]);
-
-            ordersArea.innerHTML = `
+            alertAudio.loop = true; alertAudio.play();
+            document.getElementById('orders-area').innerHTML = `
                 <div class="order-card">
-                    <h1 class="blink" style="color:red;">🚨 ΝΕΑ ΚΛΗΣΗ!</h1>
-                    <p>Ώρα: ${data.time}</p>
-                    <button class="btn-main" onclick="acceptOrder()">ΑΠΟΔΟΧΗ ✅</button>
-                </div>
-            `;
-            document.getElementById('status').innerText = "🔴 ΣΕ ΚΑΛΟΥΝ ΤΩΡΑ!";
+                    <h1 style="color:red;">🚨 ΚΛΗΣΗ!</h1>
+                    <button class="btn-main" onclick="accept()">ΑΠΟΔΟΧΗ</button>
+                </div>`;
         });
 
-        // Ακύρωση από το μαγαζί
-        socket.on('order-cancelled', () => {
-            stopSound();
-            ordersArea.innerHTML = "<p style='color:orange;'>⚠️ Η κλήση ακυρώθηκε.</p>";
-            setTimeout(() => { ordersArea.innerHTML = ""; document.getElementById('status').innerText = "🟢 Περιμένω παραγγελία..."; }, 3000);
-        });
-
-        function acceptOrder() {
-            stopSound();
-            const name = localStorage.getItem('driverName');
-            socket.emit('order-accepted', { driverName: name });
-            ordersArea.innerHTML = "";
-            document.getElementById('status').innerText = "✅ Αποδέχτηκες την παραγγελία!";
-            setTimeout(() => { document.getElementById('status').innerText = "🟢 Περιμένω παραγγελία..."; }, 3000);
-        }
-
-        function stopSound() {
-            alertAudio.pause();
-            alertAudio.currentTime = 0;
+        function accept() {
+            alertAudio.pause(); alertAudio.currentTime = 0;
+            socket.emit('order-accepted', { driverName: localStorage.getItem('driverName') });
+            document.getElementById('orders-area').innerHTML = "";
         }
     </script>
 </body>

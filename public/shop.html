@@ -6,43 +6,52 @@
     <title>Shop Panel - The Roasters</title>
     <style>
         body { font-family: sans-serif; text-align: center; background: #f4f4f4; padding: 20px; }
-        button { background: #e67e22; color: white; border: none; padding: 20px 40px; border-radius: 10px; font-size: 1.5em; cursor: pointer; box-shadow: 0 4px #d35400; }
-        button:active { box-shadow: 0 2px #d35400; transform: translateY(2px); }
-        #log { margin-top: 30px; background: white; padding: 15px; border-radius: 10px; min-height: 100px; border: 1px solid #ddd; }
-        .accepted { color: #27ae60; font-weight: bold; border-bottom: 1px solid #eee; padding: 5px; }
+        .driver-box { background: white; padding: 15px; margin: 10px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #ddd; }
+        button.call { background: #e67e22; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+        button.cancel { background: #c0392b; color: white; border: none; padding: 15px 30px; border-radius: 10px; margin-top: 20px; cursor: pointer; }
+        #log { margin-top: 20px; padding: 10px; background: #eee; border-radius: 5px; }
     </style>
 </head>
 <body>
     <h1>The Roasters - Κεντρικό</h1>
-    <button onclick="sendOrder()">🔔 ΚΛΗΣΗ ΝΤΕΛΙΒΕΡΑ</button>
+    
+    <h3>Ενεργοί Ντελιβεράδες:</h3>
+    <div id="driver-list">Περιμένω συνδέσεις...</div>
 
-    <div id="log">
-        <p style="color: #888;">Ιστορικό κλήσεων...</p>
-    </div>
+    <button class="cancel" onclick="cancelAll()">✖ ΑΚΥΡΩΣΗ ΟΛΩΝ ΤΩΝ ΚΛΗΣΕΩΝ</button>
+
+    <div id="log"></div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        const log = document.getElementById('log');
 
-        function sendOrder() {
+        socket.on('update-drivers', (drivers) => {
+            const list = document.getElementById('driver-list');
+            list.innerHTML = "";
+            for (let id in drivers) {
+                list.innerHTML += `
+                    <div class="driver-box">
+                        <span><strong>${drivers[id]}</strong></span>
+                        <button class="call" onclick="callDriver('${id}', '${drivers[id]}')">🔔 ΚΛΗΣΗ</button>
+                    </div>
+                `;
+            }
+        });
+
+        function callDriver(id, name) {
             const time = new Date().toLocaleTimeString();
-            socket.emit('new-order', { time: time });
-            
-            const p = document.createElement('p');
-            p.innerText = `[${time}] Η κλήση στάλθηκε...`;
-            log.prepend(p);
+            socket.emit('call-driver', { driverId: id, time: time });
+            document.getElementById('log').innerHTML = `<p>Καλούμε τον ${name}...</p>`;
         }
 
-        // Λήψη επιβεβαίωσης από τον ντελιβερά
+        function cancelAll() {
+            socket.emit('cancel-order');
+            document.getElementById('log').innerHTML = `<p style="color:red;">Η κλήση ακυρώθηκε!</p>`;
+        }
+
         socket.on('driver-accepted', (data) => {
-            const p = document.createElement('p');
-            p.className = "accepted";
-            p.innerText = `✅ Ο ${data.driverName} αποδέχτηκε την κλήση!`;
-            log.prepend(p);
-            
-            // Ήχος επιβεβαίωσης στο μαγαζί
-            new Audio('https://actions.google.com/sounds/v1/notifications/positive_notification.ogg').play();
+            document.getElementById('log').innerHTML = `<h2 style="color:green;">✅ Ο ${data.driverName} έρχεται!</h2>`;
         });
     </script>
 </body>

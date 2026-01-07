@@ -1,11 +1,16 @@
-self.addEventListener('push', function(event) {
+self.addEventListener('push', event => {
     const data = event.data.json();
+    
     const options = {
         body: data.body,
-        icon: '/icon.png', // Θα βάλουμε ένα εικονίδιο μετά
-        badge: '/icon.png',
-        vibrate: [200, 100, 200, 100, 200, 100, 400], // Δόνηση για να το ακούσει
-        data: { url: data.url }
+        icon: 'https://via.placeholder.com/128',
+        // Δόνηση: 500ms δόνηση, 100ms παύση, 500ms δόνηση (επαναλαμβανόμενο)
+        vibrate: [500, 100, 500, 100, 500, 100, 500],
+        data: { url: data.url },
+        badge: 'https://via.placeholder.com/128',
+        tag: 'delivery-alert',
+        renotify: true,
+        requireInteraction: true // Η ειδοποίηση δεν εξαφανίζεται μόνη της
     };
 
     event.waitUntil(
@@ -13,7 +18,7 @@ self.addEventListener('push', function(event) {
     );
 });
 
-self.addEventListener('notificationclick', function(event) {
+self.addEventListener('notificationclick', event => {
     event.notification.close();
     event.waitUntil(
         clients.openWindow(event.notification.data.url)

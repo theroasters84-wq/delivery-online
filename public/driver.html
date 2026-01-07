@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ντελιβεράς</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    body {
+      margin:0;
+      font-family: Arial, sans-serif;
+      background:#000;
+      color:#fff;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      height:100vh;
+    }
+    .box {
+      text-align:center;
+      width:90%;
+      max-width:400px;
+    }
+    input {
+      width:100%;
+      padding:15px;
+      font-size:20px;
+      margin-bottom:10px;
+      text-align:center;
+    }
+    button {
+      width:100%;
+      padding:15px;
+      font-size:22px;
+      background:#1abc9c;
+      border:none;
+      color:#000;
+      cursor:pointer;
+    }
+    #call {
+      display:none;
+    }
+    #call h1 {
+      font-size:40px;
+      margin-bottom:20px;
+    }
+    #accept {
+      background:red;
+      color:white;
+      font-size:30px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="box">
+
+  <!-- LOGIN -->
+  <div id="login">
+    <h2>Όνομα ντελιβερά</h2>
+    <input id="name" placeholder="γράψε όνομα" />
+    <button onclick="login()">Σύνδεση</button>
+  </div>
+
+  <!-- CALL SCREEN -->
+  <div id="call">
+    <h1>📢 ΣΕ ΚΑΛΟΥΝ</h1>
+    <button id="accept" onclick="accept()">ΤΟ ΠΗΡΑ</button>
+  </div>
+
+</div>
+
+<audio id="sound" src="sounds/alert.mp3" loop></audio>
+
+<script>
+  const socket = io();
+  const sound = document.getElementById("sound");
+
+  function login() {
+    const name = document.getElementById("name").value.trim();
+    if (!name) return alert("Βάλε όνομα");
+    socket.emit("register-driver", name);
+    document.getElementById("login").style.display = "none";
+    document.body.style.background = "#111";
+  }
+
+  socket.on("ring", () => {
+    document.getElementById("call").style.display = "block";
+    sound.play();
+  });
+
+  function accept() {
+    sound.pause();
+    sound.currentTime = 0;
+    document.getElementById("call").style.display = "none";
+    socket.emit("driver-accepted");
+  }
+</script>
+
+</body>
+</html>

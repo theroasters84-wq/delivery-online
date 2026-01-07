@@ -1,11 +1,12 @@
 {
-  "name": "The Roasters Delivery",
+  "name": "The Roasters Delivery System",
   "short_name": "Roasters",
-  "start_url": "/driver.html",
+  "description": "Σύστημα ειδοποίησης ντελιβεράδων για το The Roasters",
+  "start_url": "/shop.html",
   "display": "standalone",
-  "background_color": "#121212",
-  "theme_color": "#00ff00",
-  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#e67e22",
+  "orientation": "any",
   "icons": [
     {
       "src": "https://cdn-icons-png.flaticon.com/512/924/924514.png",
@@ -14,7 +15,7 @@
       "purpose": "any"
     },
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/2830/2830305.png",
+      "src": "https://cdn-icons-png.flaticon.com/512/924/924514.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"

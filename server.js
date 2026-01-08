@@ -2,48 +2,59 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const webpush = require('web-push');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-    pingInterval: 10000, // Στέλνει ping κάθε 10 δευτερόλεπτα
-    pingTimeout: 5000    // Περιμένει 5 δευτερόλεπτα για απάντηση
+    pingInterval: 10000,
+    pingTimeout: 5000
 });
+
+// Ρύθμιση Web Push
+const publicVapidKey = 'BEl6M-m-E-G_S5O1A5eI-R_Gv4W_p0Yn7H3XjU7Y4N4I_O8N8U4M_P5I_T1O_A';
+const privateVapidKey = 'YOUR_PRIVATE_KEY_HERE'; // Βάλε το Private Key εδώ
+webpush.setVapidDetails('mailto:test@test.com', publicVapidKey, privateVapidKey);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-let shops = {}; // { shopName: { driverId: driverName } }
+let shops = {}; 
 
 io.on('connection', (socket) => {
-    console.log('New Connection:', socket.id);
-
     socket.on('join-shop', (shopName) => {
-        socket.join(shopName);
-        if (!shops[shopName]) shops[shopName] = {};
-        io.to(shopName).emit('update-drivers', shops[shopName]);
+        const room = shopName.toLowerCase().trim();
+        socket.join(room);
+        if (!shops[room]) shops[room] = {};
+        io.to(room).emit('update-drivers', shops[room]);
     });
 
     socket.on('driver-login', ({ name, shop }) => {
-        socket.join(shop);
-        socket.myShop = shop;
+        const room = shop.toLowerCase().trim();
+        socket.join(room);
+        socket.myShop = room;
         socket.myName = name;
-        if (!shops[shop]) shops[shop] = {};
-        shops[shop][socket.id] = name;
-        io.to(shop).emit('update-drivers', shops[shop]);
-        console.log(`Driver ${name} joined ${shop}`);
+        if (!shops[room]) shops[room] = {};
+        shops[room][socket.id] = name;
+        io.to(room).emit('update-drivers', shops[room]);
     });
 
     socket.on('call-driver', (data) => {
-        // Στέλνουμε σε όλους στο δωμάτιο ή σε συγκεκριμένο driverId
+        const room = data.shop.toLowerCase().trim();
         if (data.driverId) {
-            io.to(data.driverId).emit('new-order', { shop: data.shop });
+            io.to(data.driverId).emit('new-order', { shop: room });
         } else {
-            io.to(data.shop).emit('new-order', { shop: data.shop });
+            io.to(room).emit('new-order', { shop: room });
         }
     });
 
     socket.on('order-accepted', (data) => {
-        io.to(data.shopName).emit('driver-accepted', data);
+        const room = data.shopName.toLowerCase().trim();
+        console.log(`Acceptance: ${data.driverName} for ${room}`);
+        // Στέλνει την επιβεβαίωση σε ΟΛΟΥΣ στο δωμάτιο του μαγαζιού
+        io.to(room).emit('driver-accepted', {
+            driverName: data.driverName,
+            shopName: room
+        });
     });
 
     socket.on('disconnect', () => {
@@ -51,7 +62,6 @@ io.on('connection', (socket) => {
             delete shops[socket.myShop][socket.id];
             io.to(socket.myShop).emit('update-drivers', shops[socket.myShop]);
         }
-        console.log('Disconnected:', socket.id);
     });
 });
 

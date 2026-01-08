@@ -7,94 +7,169 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="display" content="standalone">
     
     <link rel="manifest" href="/manifest-driver.json">
     <meta name="theme-color" content="#000000">
     <title>Roasters Driver</title>
+    
     <style>
-        body { background: #000; color: white; font-family: sans-serif; text-align: center; margin: 0; padding: 20px; height: 100vh; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
-        .card { background: #1e1e1e; padding: 30px; border-radius: 25px; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        #bot-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 25px; }
-        .btn-action { background: #ffc107; color: black; padding: 25px; width: 100%; border-radius: 20px; font-weight: 900; font-size: 1.3em; border: none; cursor: pointer; text-transform: uppercase; margin-bottom: 15px; }
-        input { width: 100%; padding: 18px; margin-bottom: 15px; border-radius: 12px; border: 1px solid #444; background: #111; color: white; font-size: 1.2em; box-sizing: border-box; }
-        #accept-layer { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #ff0000; color: white; display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 10000; animation: flash 0.4s infinite; }
+        body { 
+            background: #000; color: white; font-family: sans-serif; 
+            text-align: center; margin: 0; padding: 20px; height: 100vh; 
+            display: flex; flex-direction: column; justify-content: center; 
+            overflow: hidden; box-sizing: border-box;
+        }
+        .card { 
+            background: #1e1e1e; padding: 30px; border-radius: 25px; 
+            border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+        }
+        #bot-overlay { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: #000; z-index: 99999; display: flex; 
+            flex-direction: column; align-items: center; justify-content: center; 
+            padding: 25px; box-sizing: border-box;
+        }
+        .btn-action { 
+            background: #ffc107; color: black; padding: 20px; width: 100%; 
+            border-radius: 15px; font-weight: 900; font-size: 1.2em; 
+            border: none; cursor: pointer; text-transform: uppercase; margin-bottom: 10px; 
+        }
+        input { 
+            width: 100%; padding: 15px; margin-bottom: 10px; border-radius: 10px; 
+            border: 1px solid #444; background: #111; color: white; 
+            font-size: 1.1em; box-sizing: border-box;
+        }
+        #accept-layer { 
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+            background: #ff0000; color: white; display: none; 
+            flex-direction: column; justify-content: center; align-items: center; 
+            z-index: 10000; animation: flash 0.4s infinite; 
+        }
         @keyframes flash { 0% { background: #ff0000; } 50% { background: #990000; } 100% { background: #ff0000; } }
+        #status-box { margin: 20px 0; border: 2px solid #333; padding: 15px; border-radius: 20px; }
     </style>
 </head>
 <body>
 
     <div id="bot-overlay">
-        <img src="https://cdn-icons-png.flaticon.com/512/171/171253.png" style="width:100px; margin-bottom:20px;">
-        <div style="background: #007bff; padding: 15px; border-radius: 15px; margin-bottom: 20px; font-weight: bold;">ΣΥΝΔΕΣΗ DRIVER</div>
+        <img src="https://cdn-icons-png.flaticon.com/512/171/171253.png" style="width:80px; margin-bottom:20px;">
+        <h2 style="margin-bottom:20px;">ROASTERS DELIVERY</h2>
         <button class="btn-action" onclick="unlock()">ΠΑΤΗΣΤΕ ΓΙΑ ΕΝΑΡΞΗ</button>
+        <p style="font-size: 0.8em; color: gray;">Ενεργοποιήστε τον ήχο και τις ειδοποιήσεις</p>
     </div>
 
     <div id="accept-layer" onclick="handleAccept()">
-        <h1 style="font-size: 4em; font-weight: 900;">ΕΡΧΟΜΑΙ!</h1>
-        <p>ΠΑΤΑ ΓΙΑ ΑΠΟΔΟΧΗ</p>
+        <h1 style="font-size: 4em; font-weight: 900; margin: 0;">ΕΡΧΟΜΑΙ!</h1>
+        <p style="font-size: 1.5em;">ΠΑΤΑ ΓΙΑ ΑΠΟΔΟΧΗ</p>
     </div>
 
     <div class="card" id="login-ui" style="display:none;">
+        <h3 style="margin-top:0;">ΕΙΣΟΔΟΣ</h3>
         <input type="password" id="pw" placeholder="Κωδικός">
-        <input type="text" id="shop" placeholder="Μαγαζί">
-        <input type="text" id="name" placeholder="Όνομα">
+        <input type="text" id="shop" placeholder="Όνομα Μαγαζιού">
+        <input type="text" id="name" placeholder="Το Όνομά σου">
         <button class="btn-action" style="background:#00ff00;" onclick="login()">ΣΥΝΔΕΣΗ</button>
     </div>
 
     <div id="active-ui" style="display:none;">
-        <h1 id="shop-title" style="color:#00ff00;"></h1>
-        <div style="margin: 20px; padding: 20px; border: 2px solid #333; border-radius: 20px;">
-            <span style="font-size: 2em; color:#00ff00;">●</span> ONLINE
+        <h1 id="shop-title" style="color:#ffc107; margin:0;"></h1>
+        <div id="status-box">
+            <span id="dot" style="font-size: 1.5em; color:#00ff00;">●</span> 
+            <span style="font-size: 1.2em; font-weight:bold;"> ONLINE</span>
+            <div id="driver-name-display" style="color: #aaa; margin-top:5px;"></div>
         </div>
-        <button onclick="logout()" style="color:gray; background:none; border:none; text-decoration:underline;">Αποσύνδεση</button>
+        <button onclick="logout()" style="color:#ff4757; background:none; border:none; text-decoration:underline; font-size:0.9em;">Αποσύνδεση / Αλλαγή</button>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
         const alarm = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+        let wakeLock = null;
 
+        // ΚΑΤΑΧΩΡΗΣΗ SERVICE WORKER
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js');
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('SW OK'))
+                .catch(err => console.log('SW Error', err));
+            });
         }
 
         function unlock() {
             alarm.play().then(() => {
                 alarm.pause(); 
+                alarm.currentTime = 0;
                 document.getElementById('bot-overlay').style.display = 'none';
                 if(localStorage.getItem('is_logged_in')) start();
                 else document.getElementById('login-ui').style.display = 'block';
-            });
+            }).catch(() => alert("Παρακαλώ πατήστε ξανά για να ενεργοποιηθεί ο ήχος!"));
         }
 
+        window.onload = () => {
+            if(localStorage.getItem('saved_pw')) document.getElementById('pw').value = localStorage.getItem('saved_pw');
+            if(localStorage.getItem('saved_shop')) document.getElementById('shop').value = localStorage.getItem('saved_shop');
+            if(localStorage.getItem('saved_name')) document.getElementById('name').value = localStorage.getItem('saved_name');
+        };
+
         function login() {
+            const shop = document.getElementById('shop').value.toLowerCase().trim();
+            const name = document.getElementById('name').value.trim();
+            if(!shop || !name) return alert("Συμπλήρωσε Μαγαζί και Όνομα!");
+            
             localStorage.setItem('saved_pw', document.getElementById('pw').value);
-            localStorage.setItem('saved_shop', document.getElementById('shop').value.toLowerCase().trim());
-            localStorage.setItem('saved_name', document.getElementById('name').value.trim());
+            localStorage.setItem('saved_shop', shop);
+            localStorage.setItem('saved_name', name);
             localStorage.setItem('is_logged_in', 'true');
             start();
         }
 
-        function start() {
+        async function start() {
             document.getElementById('login-ui').style.display = 'none';
             document.getElementById('active-ui').style.display = 'block';
-            document.getElementById('shop-title').innerText = localStorage.getItem('saved_shop').toUpperCase();
-            socket.emit('driver-login', { name: localStorage.getItem('saved_name'), shop: localStorage.getItem('saved_shop') });
-            if ('wakeLock' in navigator) navigator.wakeLock.request('screen');
+            const shop = localStorage.getItem('saved_shop');
+            const name = localStorage.getItem('saved_name');
+            
+            document.getElementById('shop-title').innerText = shop.toUpperCase();
+            document.getElementById('driver-name-display').innerText = "Οδηγός: " + name;
+            
+            socket.emit('driver-login', { name: name, shop: shop });
+
+            // Κλείδωμα οθόνης (Wake Lock)
+            if ('wakeLock' in navigator) {
+                try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+            }
         }
 
         socket.on('new-order', () => {
-            alarm.loop = true; alarm.play();
+            alarm.loop = true; 
+            alarm.play();
             document.getElementById('accept-layer').style.display = 'flex';
+            if(navigator.vibrate) navigator.vibrate([1000, 500, 1000, 500, 1000]);
         });
 
         function handleAccept() {
-            alarm.pause();
-            socket.emit('order-accepted', { driverName: localStorage.getItem('saved_name'), shopName: localStorage.getItem('saved_shop') });
+            alarm.pause(); 
+            alarm.currentTime = 0;
+            socket.emit('order-accepted', { 
+                driverName: localStorage.getItem('saved_name'), 
+                shopName: localStorage.getItem('saved_shop') 
+            });
             document.getElementById('accept-layer').style.display = 'none';
         }
 
         function logout() { localStorage.clear(); location.reload(); }
+        
+        // Επανασύνδεση αν κοπεί το internet
+        socket.on('connect', () => {
+            if(localStorage.getItem('is_logged_in')) {
+                socket.emit('driver-login', { 
+                    name: localStorage.getItem('saved_name'), 
+                    shop: localStorage.getItem('saved_shop') 
+                });
+            }
+        });
     </script>
 </body>
 </html>

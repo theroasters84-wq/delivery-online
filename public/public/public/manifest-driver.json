@@ -1,15 +1,18 @@
 {
   "name": "Roasters DRIVER",
   "short_name": "Driver",
+  "description": "Εφαρμογή Διανομέα - The Roasters",
   "start_url": "/driver.html",
   "display": "standalone",
   "background_color": "#121212",
   "theme_color": "#00ff00",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "https://cdn-icons-png.flaticon.com/512/2830/2830305.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }

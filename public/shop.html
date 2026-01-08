@@ -13,7 +13,6 @@
         #status-display { margin-top: 20px; padding: 20px; background: #eee; border-radius: 15px; font-weight: bold; font-size: 1.2em; }
         input { width: 90%; padding: 15px; margin-bottom: 10px; border-radius: 10px; border: 1px solid #ddd; }
         .btn-logout { background: #ff4757; color: white; border: none; padding: 12px; width: 100%; border-radius: 10px; margin-top: 20px; cursor: pointer; font-weight: bold; }
-        .btn-reset { background: #ffa502; color: white; border: none; padding: 8px 12px; border-radius: 8px; font-size: 0.85em; cursor: pointer; margin-bottom: 15px; }
     </style>
 </head>
 <body>
@@ -24,29 +23,23 @@
             <input type="text" id="shop-n" placeholder="Όνομα Μαγαζιού">
             <button onclick="enter()" style="width:100%; padding:15px; background:#3498db; color:white; border:none; border-radius:10px; font-weight:bold;">ΕΙΣΟΔΟΣ</button>
         </div>
-
         <div id="main" style="display:none;">
-            <h1 id="title" style="margin-bottom:5px;"></h1>
-            <button class="btn-reset" onclick="resetList()">🔄 Καθαρισμός Λίστας</button>
+            <h1 id="title"></h1>
             <div id="driver-list"></div>
             <div id="status-display">ΕΤΟΙΜΟ</div>
             <button class="btn-logout" onclick="logout()">❌ ΑΠΟΣΥΝΔΕΣΗ</button>
         </div>
     </div>
-
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
         const KEY = "1234";
-
         if(localStorage.getItem('shop_room')) show();
-
         function enter() {
             if(document.getElementById('pw').value !== KEY) return alert("Λάθος κωδικός");
             localStorage.setItem('shop_room', document.getElementById('shop-n').value.toLowerCase().trim());
             location.reload();
         }
-
         function show() {
             document.getElementById('setup').style.display = 'none';
             document.getElementById('main').style.display = 'block';
@@ -54,32 +47,20 @@
             document.getElementById('title').innerText = room.toUpperCase();
             socket.emit('join-shop', room);
         }
-
         socket.on('update-drivers', (drivers) => {
             const list = document.getElementById('driver-list');
             list.innerHTML = "";
-            const ids = Object.keys(drivers);
-            if(ids.length === 0) list.innerHTML = "<p style='color:gray;'>Κανένας οδηγός online</p>";
-            else {
-                ids.forEach(id => {
-                    list.innerHTML += `<div class="driver-card"><span>👤 ${drivers[id]}</span><button class="btn-call" onclick="call('${id}')">ΚΛΗΣΗ</button></div>`;
-                });
-            }
+            Object.keys(drivers).forEach(id => {
+                list.innerHTML += `<div class="driver-card"><span>👤 ${drivers[id]}</span><button class="btn-call" onclick="call('${id}')">ΚΛΗΣΗ</button></div>`;
+            });
         });
-
-        function call(id) {
-            socket.emit('call-driver', { driverId: id, shop: localStorage.getItem('shop_room') });
-            document.getElementById('status-display').innerText = "Κλήση...";
-        }
-
+        function call(id) { socket.emit('call-driver', { driverId: id, shop: localStorage.getItem('shop_room') }); }
         socket.on('driver-accepted', (data) => {
             const sd = document.getElementById('status-display');
             sd.innerText = "✅ " + data.driverName + " ΑΠΟΔΕΧΤΗΚΕ!";
             sd.style.background = "#2ecc71"; sd.style.color = "white";
             setTimeout(() => { sd.style.background = "#eee"; sd.style.color = "#333"; sd.innerText = "ΕΤΟΙΜΟ"; }, 5000);
         });
-
-        function resetList() { socket.emit('reset-drivers', localStorage.getItem('shop_room')); }
         function logout() { localStorage.clear(); location.reload(); }
     </script>
 </body>

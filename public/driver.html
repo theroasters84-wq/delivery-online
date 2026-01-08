@@ -3,143 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Roasters Driver</title>
-    
+    <title>Driver - The Roasters</title>
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#00ff00">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <meta name="apple-mobile-web-app-title" content="Roasters Driver">
-
     <style>
         body { font-family: sans-serif; text-align: center; background: #121212; color: white; padding: 20px; }
-        .container { max-width: 400px; margin: auto; }
-        input { padding: 18px; width: 85%; border-radius: 12px; border: 1px solid #333; background: #222; color: white; margin-bottom: 15px; font-size: 1.1em; }
-        .btn-main { background: #00ff00; color: black; border: none; padding: 20px; border-radius: 15px; font-weight: bold; width: 90%; cursor: pointer; font-size: 1.3em; box-shadow: 0 5px #008800; }
-        .btn-main:active { transform: translateY(3px); box-shadow: none; }
-        .order-card { background: #1e1e1e; padding: 30px; border-radius: 25px; border: 5px solid #ff0000; margin-top: 20px; animation: blink 1s infinite; }
-        @keyframes blink { 0% { border-color: #ff0000; } 50% { border-color: #330000; } 100% { border-color: #ff0000; } }
-        #status { font-size: 1.2em; margin-top: 10px; color: #00ff00; }
-        .btn-logout { background: transparent; color: #666; border: none; text-decoration: underline; margin-top: 20px; cursor: pointer; }
+        .box { background: #1e1e1e; padding: 20px; border-radius: 15px; margin-bottom: 10px; }
+        input { padding: 15px; width: 80%; border-radius: 10px; margin: 10px 0; border: none; font-size: 1em; }
+        .btn { background: #00ff00; color: #000; padding: 20px; width: 85%; border-radius: 15px; font-weight: bold; border: none; cursor: pointer; font-size: 1.2em; }
+        .order-alert { border: 5px solid red; padding: 20px; animation: blink 1s infinite; margin-top: 20px; border-radius: 20px; }
+        @keyframes blink { 0% { opacity:1; } 50% { opacity:0.5; } 100% { opacity:1; } }
     </style>
 </head>
 <body>
+    <div id="login-view">
+        <h2>Σύνδεση Delivery</h2>
+        <input type="text" id="shop-input" placeholder="Όνομα Μαγαζιού (π.χ. roasters)">
+        <input type="text" id="name-input" placeholder="Το όνομά σου">
+        <button class="btn" onclick="login()">ΕΝΕΡΓΟΠΟΙΗΣΗ</button>
+    </div>
 
-    <div class="container">
-        <h1>The Roasters ☕</h1>
-
-        <div id="login-section">
-            <p>Εισάγετε το όνομά σας για σύνδεση:</p>
-            <input type="text" id="driver-name-input" placeholder="Όνομα Ντελιβερά...">
-            <button class="btn-main" onclick="initDriver()">ΕΝΕΡΓΟΠΟΙΗΣΗ</button>
-        </div>
-
-        <div id="profile-section" style="display:none;">
-            <h2 id="display-name"></h2>
-            <div id="status">🟢 ΠΕΡΙΜΕΝΩ ΠΑΡΑΓΓΕΛΙΑ...</div>
-            <div id="orders-area"></div>
-            <button class="btn-logout" onclick="logout()">Αλλαγή ονόματος</button>
-        </div>
+    <div id="main-view" style="display:none;">
+        <h3 id="info-text"></h3>
+        <div id="order-container"></div>
+        <button onclick="localStorage.clear(); location.reload()" style="background:none; color:gray; border:none; margin-top:40px; text-decoration:underline;">Αποσύνδεση / Αλλαγή Μαγαζιού</button>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        const publicVapidKey = 'BLWh5oe7cn7f1WZjxkYAUoJiWimKmiQ4psQ-2CkdxXNx2HukkF3ExB4RmUHDakiwTFyHzcs5SKVpRUeAR_pZUMs';
-        const alertAudio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-        alertAudio.preload = 'auto';
+        const sound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
 
-        // Έλεγχος αν υπάρχει ήδη όνομα
-        let savedName = localStorage.getItem('driverName');
-        if (savedName) {
-            document.getElementById('driver-name-input').value = savedName;
-        }
+        document.getElementById('shop-input').value = localStorage.getItem('myShop') || '';
+        document.getElementById('name-input').value = localStorage.getItem('myName') || '';
 
-        async function initDriver() {
-            const name = document.getElementById('driver-name-input').value;
-            if (!name) return alert("Παρακαλώ βάλε ένα όνομα.");
+        async function login() {
+            const shop = document.getElementById('shop-input').value.trim();
+            const name = document.getElementById('name-input').value.trim();
+            if(!shop || !name) return alert("Συμπλήρωσε τα στοιχεία!");
+
+            localStorage.setItem('myShop', shop);
+            localStorage.setItem('myName', name);
+
+            sound.play().then(() => sound.pause()); // Ξεκλείδωμα ήχου
             
-            localStorage.setItem('driverName', name);
+            document.getElementById('login-view').style.display = 'none';
+            document.getElementById('main-view').style.display = 'block';
+            document.getElementById('info-text').innerText = `${name} @ ${shop}`;
 
-            // Ξεκλείδωμα Ήχου & Δόνησης με το πρώτο κλικ
-            alertAudio.play().then(() => {
-                alertAudio.pause();
-                alertAudio.currentTime = 0;
-            }).catch(err => console.log("Audio unlock failed"));
+            socket.emit('driver-login', { name: name, shop: shop });
 
-            if (navigator.vibrate) {
-                navigator.vibrate(200);
-            }
-
-            setupDriver(name);
+            // Push Notifications
+            const reg = await navigator.serviceWorker.ready;
+            const sub = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: 'BLWh5oe7cn7f1WZjxkYAUoJiWimKmiQ4psQ-2CkdxXNx2HukkF3ExB4RmUHDakiwTFyHzcs5SKVpRUeAR_pZUMs'
+            });
+            socket.emit('subscribe-push', sub);
         }
 
-        async function setupDriver(name) {
-            document.getElementById('login-section').style.display = "none";
-            document.getElementById('profile-section').style.display = "block";
-            document.getElementById('display-name').innerText = "Ντελιβεράς: " + name;
-            
-            socket.emit('driver-login', name);
-
-            // Εγγραφή στα Push Notifications
-            if ('serviceWorker' in navigator) {
-                try {
-                    const register = await navigator.serviceWorker.ready;
-                    const subscription = await register.pushManager.subscribe({
-                        userVisibleOnly: true,
-                        applicationServerKey: publicVapidKey
-                    });
-                    socket.emit('subscribe-push', subscription);
-                    console.log("Push Subscribed!");
-                } catch (e) {
-                    console.error("Push subscription failed:", e);
-                }
-            }
-        }
-
-        function logout() {
-            localStorage.removeItem('driverName');
-            location.reload();
-        }
-
-        // Λήψη παραγγελίας (όταν η σελίδα είναι ανοιχτή)
         socket.on('new-order', (data) => {
-            alertAudio.loop = true;
-            alertAudio.play();
-
-            if (navigator.vibrate) {
-                // Συνεχόμενη δόνηση
-                navigator.vibrate([1000, 500, 1000, 500, 1000, 500, 1000]);
-            }
-
-            document.getElementById('orders-area').innerHTML = `
-                <div class="order-card">
-                    <h1 style="color:red; margin:0;">🚨 ΝΕΑ ΚΛΗΣΗ!</h1>
-                    <p>Ώρα: ${data.time}</p>
-                    <button class="btn-main" onclick="accept()">ΑΠΟΔΟΧΗ ✅</button>
-                </div>
-            `;
-            document.getElementById('status').innerText = "🔴 ΣΑΣ ΚΑΛΟΥΝ!";
+            sound.loop = true;
+            sound.play();
+            if(navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
+            
+            document.getElementById('order-container').innerHTML = `
+                <div class="order-alert">
+                    <h1>🚨 ΚΛΗΣΗ: ${data.shop.toUpperCase()}</h1>
+                    <button class="btn" onclick="accept()">ΑΠΟΔΟΧΗ ✅</button>
+                </div>`;
         });
 
         function accept() {
-            alertAudio.pause();
-            alertAudio.currentTime = 0;
-            if (navigator.vibrate) navigator.vibrate(0);
-
-            const name = localStorage.getItem('driverName');
-            socket.emit('order-accepted', { driverName: name });
-            
-            document.getElementById('orders-area').innerHTML = "";
-            document.getElementById('status').innerText = "🟢 ΠΕΡΙΜΕΝΩ ΠΑΡΑΓΓΕΛΙΑ...";
-        }
-
-        // Καταγραφή Service Worker για PWA
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').then(() => {
-                console.log("Service Worker Registered");
+            sound.pause();
+            socket.emit('order-accepted', { 
+                driverName: localStorage.getItem('myName'), 
+                shopName: localStorage.getItem('myShop') 
             });
+            document.getElementById('order-container').innerHTML = '';
         }
+        
+        if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
     </script>
 </body>
 </html>

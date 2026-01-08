@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shop Panel</title>
+    <link rel="manifest" href="/manifest-shop.json">
+    <title>Shop Panel - The Roasters</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #f4f4f4; padding: 20px; }
         .card { max-width: 450px; margin: auto; background: white; padding: 30px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
@@ -26,7 +27,7 @@
 
         <div id="main" style="display:none;">
             <h1 id="title" style="margin-bottom:5px;"></h1>
-            <button class="btn-reset" onclick="resetList()">🔄 Καθαρισμός Λίστας (Αν κόλλησε)</button>
+            <button class="btn-reset" onclick="resetList()">🔄 Καθαρισμός Λίστας</button>
             <div id="driver-list"></div>
             <div id="status-display">ΕΤΟΙΜΟ</div>
             <button class="btn-logout" onclick="logout()">❌ ΑΠΟΣΥΝΔΕΣΗ</button>
@@ -36,7 +37,7 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        const KEY = "1234"; // Ο κωδικός σου
+        const KEY = "1234";
 
         if(localStorage.getItem('shop_room')) show();
 
@@ -58,9 +59,8 @@
             const list = document.getElementById('driver-list');
             list.innerHTML = "";
             const ids = Object.keys(drivers);
-            if(ids.length === 0) {
-                list.innerHTML = "<p style='color:gray;'>Κανένας οδηγός online</p>";
-            } else {
+            if(ids.length === 0) list.innerHTML = "<p style='color:gray;'>Κανένας οδηγός online</p>";
+            else {
                 ids.forEach(id => {
                     list.innerHTML += `<div class="driver-card"><span>👤 ${drivers[id]}</span><button class="btn-call" onclick="call('${id}')">ΚΛΗΣΗ</button></div>`;
                 });
@@ -69,33 +69,18 @@
 
         function call(id) {
             socket.emit('call-driver', { driverId: id, shop: localStorage.getItem('shop_room') });
-            const sd = document.getElementById('status-display');
-            sd.innerText = "Κλήση σε εξέλιξη...";
-            sd.style.background = "#ffc107";
+            document.getElementById('status-display').innerText = "Κλήση...";
         }
 
         socket.on('driver-accepted', (data) => {
             const sd = document.getElementById('status-display');
             sd.innerText = "✅ " + data.driverName + " ΑΠΟΔΕΧΤΗΚΕ!";
             sd.style.background = "#2ecc71"; sd.style.color = "white";
-            new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play().catch(()=>{});
-            setTimeout(() => { 
-                sd.style.background = "#eee"; sd.style.color = "#333"; sd.innerText = "ΕΤΟΙΜΟ"; 
-            }, 8000);
+            setTimeout(() => { sd.style.background = "#eee"; sd.style.color = "#333"; sd.innerText = "ΕΤΟΙΜΟ"; }, 5000);
         });
 
-        function resetList() {
-            if(confirm("Θέλεις να καθαρίσεις τη λίστα των οδηγών;")) {
-                socket.emit('reset-drivers', localStorage.getItem('shop_room'));
-            }
-        }
-
-        function logout() {
-            if(confirm("Σίγουρα αποσύνδεση;")) {
-                localStorage.clear();
-                location.reload();
-            }
-        }
+        function resetList() { socket.emit('reset-drivers', localStorage.getItem('shop_room')); }
+        function logout() { localStorage.clear(); location.reload(); }
     </script>
 </body>
 </html>

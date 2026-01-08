@@ -3,15 +3,23 @@
   "name": "Roasters Driver",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/2830/2830305.png",
+      "src": "https://cdn-icons-png.flaticon.com/512/171/171253.png",
       "type": "image/png",
       "sizes": "512x512",
-      "purpose": "any"
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/171/171253.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
     }
   ],
   "start_url": "/driver.html",
   "background_color": "#000000",
   "display": "standalone",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "portrait",
   "scope": "/",
   "theme_color": "#000000"
 }

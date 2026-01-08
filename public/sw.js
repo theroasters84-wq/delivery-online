@@ -1,19 +1,36 @@
 self.addEventListener('push', function(event) {
-    const data = event.data.json();
+    const data = event.data ? event.data.json() : { title: '🚨 ΚΛΗΣΗ!', body: 'Νέα παραγγελία!' };
+    
     const options = {
         body: data.body,
-        icon: 'https://cdn-icons-png.flaticon.com/512/2830/2830305.png',
-        vibrate: [500, 100, 500, 100, 500],
-        data: { url: '/driver.html' },
-        tag: 'roasters-call',
-        renotify: true
+        icon: '/icon.png', // Βάλε μια εικόνα αν έχεις
+        badge: '/icon.png',
+        vibrate: [500, 200, 500, 200, 500, 200, 500],
+        tag: 'delivery-call', // Σημαντικό: για να μην γεμίζει η οθόνη
+        renotify: true,
+        requireInteraction: true, // Η ειδοποίηση ΔΕΝ φεύγει αν δεν την πατήσει ο οδηγός
+        data: { url: '/driver.html' }
     };
-    event.waitUntil(self.registration.showNotification(data.title, options));
+
+    event.waitUntil(
+        self.registration.showNotification(data.title, options)
+    );
 });
 
 self.addEventListener('notificationclick', function(event) {
     event.notification.close();
     event.waitUntil(
-        clients.openWindow(event.notification.data.url)
+        clients.matchAll({ type: 'window' }).then(windowClients => {
+            // Αν ο οδηγός έχει ήδη ανοιχτό το tab, πάει εκεί. Αν όχι, ανοίγει νέο.
+            for (var i = 0; i < windowClients.length; i++) {
+                var client = windowClients[i];
+                if (client.url === event.notification.data.url && 'focus' in client) {
+                    return client.focus();
+                }
+            }
+            if (clients.openWindow) {
+                return clients.openWindow(event.notification.data.url);
+            }
+        })
     );
 });

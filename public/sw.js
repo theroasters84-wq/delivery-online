@@ -21,20 +21,26 @@ self.addEventListener('notificationclick', function(event) {
     event.notification.close();
 
     if (event.action === 'accept') {
-        // Εδώ στέλνουμε σήμα στο App να κάνει την αποδοχή ακαριαία
         event.waitUntil(
             clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
                 for (let client of clientList) {
                     if (client.url.includes('/driver.html')) {
-                        return client.postMessage({ action: 'FORCE_ACCEPT' });
+                        client.postMessage({ action: 'FORCE_ACCEPT' });
+                        return client.focus();
                     }
                 }
+                // Αν δεν είναι ανοιχτό το app, το ανοίγει και στέλνει την αποδοχή
+                return clients.openWindow('/driver.html?action=auto_accept');
             })
         );
     } else {
-        // Απλό άνοιγμα του App
         event.waitUntil(
-            clients.openWindow('/driver.html')
+            clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+                for (let client of clientList) {
+                    if (client.url.includes('/driver.html') && 'focus' in client) return client.focus();
+                }
+                return clients.openWindow('/driver.html');
+            })
         );
     }
 });

@@ -15,10 +15,9 @@
       "purpose": "any"
     }
   ],
-  "start_url": "/driver.html?v=2",
+  "start_url": "/driver.html",
   "background_color": "#000000",
   "display": "standalone",
-  "orientation": "portrait",
   "scope": "/",
   "theme_color": "#000000"
 }

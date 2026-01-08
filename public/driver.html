@@ -2,130 +2,162 @@
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Driver App">
     
     <link rel="manifest" href="/driver-app.json">
     <meta name="theme-color" content="#000000">
-    <title>Roasters Driver App</title>
+    
+    <title>Roasters Driver</title>
     
     <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { 
-            background: #000; color: white; font-family: sans-serif; 
-            text-align: center; margin: 0; padding: 20px; height: 100vh; 
-            display: flex; flex-direction: column; justify-content: center; 
-            overflow: hidden; box-sizing: border-box;
+            background: #000; color: white; font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            text-align: center; margin: 0; padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px; 
+            height: 100vh; display: flex; flex-direction: column; justify-content: center; 
+            overflow: hidden; 
         }
         .card { 
-            background: #1e1e1e; padding: 30px; border-radius: 25px; 
-            border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+            background: #1a1a1a; padding: 30px; border-radius: 25px; 
+            border: 1px solid #333; box-shadow: 0 10px 40px rgba(0,0,0,0.8); 
         }
         #bot-overlay { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: #000; z-index: 99999; display: flex; 
             flex-direction: column; align-items: center; justify-content: center; 
-            padding: 25px; box-sizing: border-box;
+            padding: 30px;
         }
         .btn-action { 
-            background: #ffc107; color: black; padding: 20px; width: 100%; 
-            border-radius: 15px; font-weight: 900; font-size: 1.2em; 
-            border: none; cursor: pointer; text-transform: uppercase; margin-bottom: 10px; 
+            background: #ffc107; color: black; padding: 22px; width: 100%; 
+            border-radius: 18px; font-weight: 900; font-size: 1.4em; 
+            border: none; cursor: pointer; text-transform: uppercase; 
+            box-shadow: 0 4px 15px rgba(255,193,7,0.3); margin-bottom: 15px;
         }
+        .btn-action:active { transform: scale(0.98); background: #e5ad06; }
+        
         input { 
-            width: 100%; padding: 15px; margin-bottom: 10px; border-radius: 10px; 
-            border: 1px solid #444; background: #111; color: white; 
-            font-size: 1.1em; box-sizing: border-box;
+            width: 100%; padding: 18px; margin-bottom: 12px; border-radius: 12px; 
+            border: 2px solid #333; background: #000; color: white; 
+            font-size: 1.1em; outline: none;
         }
+        input:focus { border-color: #ffc107; }
+
         #accept-layer { 
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
             background: #ff0000; color: white; display: none; 
             flex-direction: column; justify-content: center; align-items: center; 
-            z-index: 10000; animation: flash 0.4s infinite; 
+            z-index: 10000; animation: flash 0.5s infinite; 
         }
-        @keyframes flash { 0% { background: #ff0000; } 50% { background: #990000; } 100% { background: #ff0000; } }
-        #status-box { margin: 20px 0; border: 2px solid #333; padding: 15px; border-radius: 20px; }
+        @keyframes flash { 0% { background: #ff0000; } 50% { background: #7a0000; } 100% { background: #ff0000; } }
+        
+        #status-box { 
+            margin: 25px 0; border: 2px solid #222; padding: 20px; 
+            border-radius: 20px; background: #0a0a0a;
+        }
+        .online-dot { color: #00ff00; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
     <div id="bot-overlay">
-        <img src="https://img.icons8.com/color/512/motorcycle.png" style="width:100px; margin-bottom:20px;">
-        <h2 style="margin-bottom:20px;">ROASTERS DRIVER</h2>
+        <img src="https://img.icons8.com/color/512/motorcycle.png" style="width:120px; margin-bottom:30px;">
+        <h1 style="margin-bottom:30px; font-size: 1.8em;">ROASTERS DRIVER</h1>
         <button class="btn-action" onclick="unlock()">ΕΝΑΡΞΗ ΒΑΡΔΙΑΣ</button>
+        <p style="color: #666; font-size: 0.9em;">Πατήστε για σύνδεση στο σύστημα</p>
     </div>
 
     <div id="accept-layer" onclick="handleAccept()">
-        <h1 style="font-size: 4em; font-weight: 900; margin: 0;">ΕΡΧΟΜΑΙ!</h1>
-        <p style="font-size: 1.5em;">ΠΑΤΑ ΓΙΑ ΑΠΟΔΟΧΗ</p>
+        <h1 style="font-size: 5em; font-weight: 900; margin: 0; letter-spacing: -2px;">ΕΡΧΟΜΑΙ!</h1>
+        <p style="font-size: 1.8em; margin-top: 20px;">ΠΑΤΑ ΓΙΑ ΑΠΟΔΟΧΗ</p>
     </div>
 
     <div class="card" id="login-ui" style="display:none;">
-        <h3 style="margin-top:0;">ΣΥΝΔΕΣΗ</h3>
+        <h2 style="margin-top:0; color:#ffc107;">LOGIN</h2>
         <input type="password" id="pw" placeholder="Κωδικός">
-        <input type="text" id="shop" placeholder="Μαγαζί">
+        <input type="text" id="shop" placeholder="Κατάστημα (π.χ. kentro)">
         <input type="text" id="name" placeholder="Το Όνομά σου">
-        <button class="btn-action" style="background:#00ff00;" onclick="login()">ONLINE</button>
+        <button class="btn-action" style="background:#28a745; color:white;" onclick="login()">ΣΥΝΔΕΣΗ ΤΩΡΑ</button>
     </div>
 
     <div id="active-ui" style="display:none;">
-        <h1 id="shop-title" style="color:#ffc107; margin:0;"></h1>
+        <h1 id="shop-title" style="color:#ffc107; margin:0; font-size: 2.2em;"></h1>
         <div id="status-box">
-            <span id="dot" style="font-size: 1.5em; color:#00ff00;">●</span> 
-            <span style="font-size: 1.2em; font-weight:bold;"> ΣΕ ΑΝΑΜΟΝΗ</span>
-            <div id="driver-name-display" style="color: #aaa; margin-top:5px;"></div>
+            <div style="font-size: 1.4em; font-weight:bold;">
+                <span class="online-dot">●</span> ONLINE
+            </div>
+            <div id="driver-name-display" style="color: #888; margin-top:8px; font-size: 1.1em;"></div>
         </div>
-        <button onclick="logout()" style="color:gray; background:none; border:none; text-decoration:underline;">Logout</button>
+        <p style="color: #444; font-size: 0.8em; margin-bottom: 20px;">Η οθόνη θα παραμείνει ενεργή</p>
+        <button onclick="logout()" style="color:#ff4757; background:none; border:none; text-decoration:underline; font-size:1em;">Αποσύνδεση</button>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io();
+        const socket = io({ reconnection: true, reconnectionAttempts: 20 });
         const alarm = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
         let wakeLock = null;
 
-        // Service Worker Registration
+        // Service Worker: Το "κλειδί" για την εγκατάσταση χωρίς μπάρα
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                .then(reg => {
-                    console.log('SW Registered');
-                    reg.update(); // Αναγκαστικό update
+                navigator.serviceWorker.register('/sw.js').then(reg => {
+                    console.log('Service Worker Registered');
+                    reg.update();
                 });
             });
         }
 
         function unlock() {
+            // Παίζουμε και σταματάμε τον ήχο για να ξεκλειδώσει ο browser
             alarm.play().then(() => {
                 alarm.pause(); 
+                alarm.currentTime = 0;
                 document.getElementById('bot-overlay').style.display = 'none';
-                if(localStorage.getItem('is_logged_in')) start();
+                if(localStorage.getItem('driver_logged_in')) start();
                 else document.getElementById('login-ui').style.display = 'block';
-            });
+            }).catch(e => alert("Παρακαλώ πατήστε ξανά το κουμπί!"));
         }
 
+        window.onload = () => {
+            if(localStorage.getItem('saved_shop')) document.getElementById('shop').value = localStorage.getItem('saved_shop');
+            if(localStorage.getItem('saved_name')) document.getElementById('name').value = localStorage.getItem('saved_name');
+        };
+
         function login() {
-            localStorage.setItem('saved_pw', document.getElementById('pw').value);
-            localStorage.setItem('saved_shop', document.getElementById('shop').value.toLowerCase().trim());
-            localStorage.setItem('saved_name', document.getElementById('name').value.trim());
-            localStorage.setItem('is_logged_in', 'true');
+            const s = document.getElementById('shop').value.toLowerCase().trim();
+            const n = document.getElementById('name').value.trim();
+            if(!s || !n) return alert("Βάλε Μαγαζί και Όνομα!");
+
+            localStorage.setItem('saved_shop', s);
+            localStorage.setItem('saved_name', n);
+            localStorage.setItem('driver_logged_in', 'true');
             start();
         }
 
         async function start() {
             document.getElementById('login-ui').style.display = 'none';
             document.getElementById('active-ui').style.display = 'block';
+            
             const shop = localStorage.getItem('saved_shop');
             const name = localStorage.getItem('saved_name');
+            
             document.getElementById('shop-title').innerText = shop.toUpperCase();
-            document.getElementById('driver-name-display').innerText = "Οδηγός: " + name;
+            document.getElementById('driver-name-display').innerText = name;
             
             socket.emit('driver-login', { name: name, shop: shop });
 
+            // Κρατάμε την οθόνη πάντα ανοιχτή (Wake Lock)
             if ('wakeLock' in navigator) {
-                try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+                try { 
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Wake Lock Active');
+                } catch (err) { console.error('Wake Lock failed'); }
             }
         }
 
@@ -133,10 +165,12 @@
             alarm.loop = true; 
             alarm.play();
             document.getElementById('accept-layer').style.display = 'flex';
+            if(navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 500]);
         });
 
         function handleAccept() {
             alarm.pause(); 
+            alarm.currentTime = 0;
             socket.emit('order-accepted', { 
                 driverName: localStorage.getItem('saved_name'), 
                 shopName: localStorage.getItem('saved_shop') 
@@ -144,7 +178,20 @@
             document.getElementById('accept-layer').style.display = 'none';
         }
 
-        function logout() { localStorage.clear(); location.reload(); }
+        function logout() {
+            localStorage.clear();
+            location.reload();
+        }
+
+        // Αυτόματη επανασύνδεση αν πέσει το σήμα
+        socket.on('connect', () => {
+            if(localStorage.getItem('driver_logged_in')) {
+                socket.emit('driver-login', { 
+                    name: localStorage.getItem('saved_name'), 
+                    shop: localStorage.getItem('saved_shop') 
+                });
+            }
+        });
     </script>
 </body>
 </html>

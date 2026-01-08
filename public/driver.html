@@ -20,19 +20,19 @@
 
     <div id="setup-wizard" class="card active">
         <div id="step1" class="setup-step active">
-            <h2>🤖 Γεια! Είμαι το Bot του Roasters</h2>
-            <p>Για να μη χάνεις κλήσεις, πρέπει να δώσεις άδεια για ειδοποιήσεις.</p>
-            <button class="btn" onclick="askNotification()">ΔΩΣΕ ΑΔΕΙΑ</button>
+            <h2>🤖 Setup Driver</h2>
+            <p>Ενεργοποίησε τις ειδοποιήσεις για να δουλεύει το App.</p>
+            <button class="btn" onclick="askNotification()">ΕΝΕΡΓΟΠΟΙΗΣΗ</button>
         </div>
         <div id="step2" class="setup-step">
             <h2>🔊 Δοκιμή Ήχου</h2>
-            <p>Πάτα το κουμπί για να σιγουρευτούμε ότι ακούς τη σειρήνα.</p>
-            <button class="btn" onclick="testSound()">ΔΟΚΙΜΗ ΗΧΟΥ</button>
+            <p>Πάτα για να ξεκλειδώσεις τον ήχο της σειρήνας.</p>
+            <button class="btn" onclick="testSound()">ΔΟΚΙΜΗ</button>
         </div>
         <div id="step3" class="setup-step">
-            <h2>🔋 Προσοχή!</h2>
-            <p>Πήγαινε: <b>Ρυθμίσεις App -> Μπαταρία</b> και επέλεξε <b>"Χωρίς Περιορισμούς"</b>.</p>
-            <button class="btn" onclick="finishSetup()">ΤΟ ΕΚΑΝΑ / ΕΠΟΜΕΝΟ</button>
+            <h2>🔋 Μπαταρία</h2>
+            <p>Βάλε το App στις <b>"Εξαιρέσεις Βελτιστοποίησης Μπαταρίας"</b> στις ρυθμίσεις.</p>
+            <button class="btn" onclick="finishSetup()">ΤΟ ΕΚΑΝΑ</button>
         </div>
     </div>
 
@@ -46,7 +46,6 @@
     <div id="driver-ui" style="display: none;">
         <h1 id="welcome-txt"></h1>
         <div style="color:#00ff00; font-size: 1.5em; font-weight: bold;">● ONLINE</div>
-        <p style="color:#888;">Περιμένεις κλήση...</p>
         <div id="call-area"></div>
         <button onclick="handleLogout()" style="background:none; border:none; color:#555; margin-top:50px; text-decoration:underline;">Αποσύνδεση</button>
     </div>
@@ -56,14 +55,23 @@
         const socket = io();
         const alarm = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
 
-        // Έλεγχος αν έχει ξαναμπει
-        if(localStorage.getItem('setupDone') && localStorage.getItem('myName')) {
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').then(reg => {
+                console.log('SW Registered');
+            });
+
+            navigator.serviceWorker.addEventListener('message', event => {
+                if (event.data.action === 'FORCE_ACCEPT') confirmOrder();
+            });
+        }
+
+        if(localStorage.getItem('setupDone')) {
             showLogin();
             if(localStorage.getItem('myName')) autoStart();
         }
 
         function askNotification() {
-            Notification.requestPermission().then(perm => {
+            Notification.requestPermission().then(() => {
                 document.getElementById('step1').classList.remove('active');
                 document.getElementById('step2').classList.add('active');
             });
@@ -71,7 +79,7 @@
 
         function testSound() {
             alarm.play().then(() => {
-                setTimeout(() => { alarm.pause(); alarm.currentTime = 0; }, 2000);
+                setTimeout(() => { alarm.pause(); alarm.currentTime = 0; }, 1000);
                 document.getElementById('step2').classList.remove('active');
                 document.getElementById('step3').classList.add('active');
             });
@@ -100,23 +108,22 @@
             const n = localStorage.getItem('myName');
             const s = localStorage.getItem('myShop');
             document.getElementById('login-ui').style.display = 'none';
-            document.getElementById('setup-wizard').style.display = 'none';
             document.getElementById('driver-ui').style.display = 'block';
             document.getElementById('welcome-txt').innerText = n;
             socket.emit('driver-login', { name: n, shop: s });
+            
+            // Έλεγχος αν ανοίξαμε από το κουμπί ειδοποίησης
+            if (new URLSearchParams(window.location.search).get('action') === 'auto_accept') {
+                setTimeout(confirmOrder, 1000);
+            }
         }
 
         socket.on('new-order', (data) => {
             alarm.loop = true; alarm.play().catch(()=>{});
-            if(navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
-            
-            // Notification System
-            new Notification("🚨 ΚΛΗΣΗ ΑΠΟ " + data.shop.toUpperCase());
-
             document.getElementById('call-area').innerHTML = `
                 <button class="big-btn" onclick="confirmOrder()">
-                    <h1 style="font-size: 4em;">ΑΠΟΔΟΧΗ</h1>
-                    <p style="font-size: 1.5em;">ΜΑΓΑΖΙ: ${data.shop.toUpperCase()}</p>
+                    <h1 style="font-size: 3.5em;">ΑΠΟΔΟΧΗ</h1>
+                    <p>ΚΛΗΣΗ: ${data.shop.toUpperCase()}</p>
                 </button>`;
         });
 

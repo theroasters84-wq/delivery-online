@@ -1,31 +1,40 @@
-// public/sw.js
+// Service Worker για το The Roasters Delivery
+// Διαχειρίζεται τις ειδοποιήσεις σε κλειδωμένη οθόνη
 
-self.addEventListener('push', event => {
-    if (!event.data) return;
+self.addEventListener('install', (event) => {
+    console.log('Service Worker: Installed');
+    self.skipWaiting();
+});
 
-    // Μετατρέπουμε τα δεδομένα που στέλνει ο server σε JSON
-    const data = event.data.json();
+self.addEventListener('activate', (event) => {
+    console.log('Service Worker: Activated');
+    return self.clients.claim();
+});
+
+// Λήψη ειδοποίησης (Push / Background Notification)
+self.addEventListener('push', function(event) {
+    let data = { title: 'The Roasters', body: '🚨 ΝΕΑ ΚΛΗΣΗ ΓΙΑ ΠΑΡΑΓΓΕΛΙΑ!' };
     
+    if (event.data) {
+        try {
+            data = event.data.json();
+        } catch (e) {
+            data.body = event.data.text();
+        }
+    }
+
     const options = {
-        title: data.title,
         body: data.body,
-        // Εικονίδιο με μηχανάκι για την ειδοποίηση
-        icon: 'https://cdn-icons-png.flaticon.com/512/2830/2830305.png', 
+        icon: 'https://cdn-icons-png.flaticon.com/512/2830/2830305.png', // Μηχανάκι
         badge: 'https://cdn-icons-png.flaticon.com/512/2830/2830305.png',
-        
-        // Επιθετικό μοτίβο δόνησης (2 δευτερόλεπτα δόνηση, 200ms παύση)
-        vibrate: [2000, 200, 2000, 200, 2000, 200, 2000],
-        
-        data: { url: data.url }, // Η σελίδα που θα ανοίξει (π.χ. /driver.html)
-        
-        tag: 'urgent-delivery', // Αν έρθουν πολλές ειδοποιήσεις, τις ομαδοποιεί
-        renotify: true,         // Κάνει ξανά ήχο/δόνηση αν έρθει νέα ειδοποίηση με το ίδιο tag
-        requireInteraction: true, // Η ειδοποίηση ΔΕΝ φεύγει αν δεν την πατήσει ο χρήστης
-        
-        // Ρυθμίσεις για Android προτεραιότητα
-        priority: 'high',
-        dir: 'ltr',
-        timestamp: Date.now()
+        vibrate: [500, 100, 500, 100, 500, 100, 500],
+        data: { url: '/driver.html' },
+        tag: 'order-alert',
+        renotify: true,
+        requireInteraction: true, // Η ειδοποίηση μένει στην οθόνη μέχρι να την πατήσει
+        actions: [
+            { action: 'open', title: 'ΑΝΟΙΓΜΑ ΕΦΑΡΜΟΓΗΣ' }
+        ]
     };
 
     event.waitUntil(
@@ -33,23 +42,22 @@ self.addEventListener('push', event => {
     );
 });
 
-// Τι συμβαίνει όταν ο ντελιβεράς κάνει κλικ στην ειδοποίηση
-self.addEventListener('notificationclick', event => {
-    event.notification.close(); // Κλείνει το παράθυρο της ειδοποίησης
+// Όταν ο διανομέας πατάει πάνω στην ειδοποίηση
+self.addEventListener('notificationclick', function(event) {
+    event.notification.close(); // Κλείνει το συννεφάκι
 
-    // Ανοίγει την εφαρμογή στη σελίδα που ορίσαμε
     event.waitUntil(
-        clients.matchAll({ type: 'window' }).then(windowClients => {
-            // Αν η σελίδα είναι ήδη ανοιχτή, κάνε focus σε αυτήν
-            for (var i = 0; i < windowClients.length; i++) {
-                var client = windowClients[i];
-                if (client.url === event.notification.data.url && 'focus' in client) {
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+            // Αν το app είναι ήδη ανοιχτό, πήγαινε εκεί
+            for (let i = 0; i < clientList.length; i++) {
+                let client = clientList[i];
+                if (client.url.includes('/driver.html') && 'focus' in client) {
                     return client.focus();
                 }
             }
-            // Αν δεν είναι ανοιχτή, άνοιξε νέο παράθυρο
+            // Αν είναι κλειστό, άνοιξέ το
             if (clients.openWindow) {
-                return clients.openWindow(event.notification.data.url);
+                return clients.openWindow('/driver.html');
             }
         })
     );

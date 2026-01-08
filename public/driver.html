@@ -3,22 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Driver App - Anti-Sleep</title>
+    <link rel="manifest" href="/manifest-driver.json">
+    <meta name="theme-color" content="#000000">
+    <title>Driver App - The Roasters</title>
     <style>
         body { background: #000; color: white; font-family: sans-serif; text-align: center; margin: 0; padding: 20px; height: 100vh; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
-        .card { background: #1e1e1e; padding: 30px; border-radius: 25px; border: 1px solid #333; }
+        .card { background: #1e1e1e; padding: 30px; border-radius: 25px; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         #bot-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 25px; box-sizing: border-box; }
         .btn-action { background: #ffc107; color: black; padding: 25px; width: 100%; border-radius: 20px; font-weight: 900; font-size: 1.3em; border: none; cursor: pointer; text-transform: uppercase; margin-bottom: 15px; }
         input { width: 100%; padding: 18px; margin-bottom: 15px; border-radius: 12px; border: 1px solid #444; background: #111; color: white; font-size: 1.2em; box-sizing: border-box; }
         #accept-layer { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #ff0000; color: white; display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 10000; animation: flash 0.4s infinite; }
         @keyframes flash { 0% { background: #ff0000; } 50% { background: #990000; } 100% { background: #ff0000; } }
-        #connection-status { font-size: 0.8em; color: #555; margin-top: 10px; }
+        #status-box { margin: 30px 0; border: 2px solid #333; padding: 20px; border-radius: 20px; }
     </style>
 </head>
 <body>
 
     <div id="bot-overlay">
-        <div style="background: #007bff; padding: 20px; border-radius: 20px; margin-bottom: 20px; font-weight: bold;">📢 ΕΝΕΡΓΟΠΟΙΗΣΗ ΣΥΝΔΕΣΗΣ & ΗΧΟΥ</div>
+        <div style="background: #007bff; padding: 20px; border-radius: 20px; margin-bottom: 20px; font-weight: bold; border: 2px solid #fff;">📢 ΕΝΕΡΓΟΠΟΙΗΣΗ ΣΥΝΔΕΣΗΣ & ΗΧΟΥ</div>
         <button class="btn-action" onclick="unlock()">ΠΑΤΗΣΤΕ ΕΔΩ ΓΙΑ ΕΝΑΡΞΗ</button>
     </div>
 
@@ -32,21 +34,21 @@
         <input type="password" id="pw" placeholder="Κωδικός">
         <input type="text" id="shop" placeholder="Μαγαζί">
         <input type="text" id="name" placeholder="Όνομα">
-        <button class="btn-action" style="background:#00ff00;" onclick="login()">ONLINE</button>
+        <button class="btn-action" style="background:#00ff00;" onclick="login()">ΣΥΝΔΕΣΗ</button>
     </div>
 
     <div id="active-ui" style="display:none;">
         <h1 id="shop-title" style="color:#00ff00;"></h1>
-        <div style="margin: 40px 0; border: 2px solid #333; padding: 20px; border-radius: 20px;">
+        <div id="status-box">
             <span id="dot" style="font-size: 2em; color:#00ff00;">●</span> <span style="font-size: 1.5em; font-weight:bold;">ONLINE</span>
-            <div id="connection-status">Συνδεδεμένος</div>
+            <div id="conn-text" style="font-size:0.8em; color:gray; margin-top:5px;">Συνδεδεμένος</div>
         </div>
-        <button onclick="logout()" style="color:#ff4757; background:none; border:none; text-decoration:underline;">Αποσύνδεση</button>
+        <button onclick="logout()" style="color:#ff4757; background:none; border:none; text-decoration:underline; cursor:pointer;">Αποσύνδεση / Αλλαγή</button>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        let socket = io({ reconnection: true, reconnectionAttempts: Infinity, reconnectionDelay: 1000 });
+        const socket = io({ reconnection: true, reconnectionAttempts: Infinity, reconnectionDelay: 1000 });
         const alarm = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
 
         function unlock() {
@@ -55,7 +57,7 @@
                 document.getElementById('bot-overlay').style.display = 'none';
                 if(localStorage.getItem('is_logged_in')) start();
                 else document.getElementById('login-ui').style.display = 'block';
-            });
+            }).catch(() => alert("Πατήστε ξανά για τον ήχο!"));
         }
 
         window.onload = () => {
@@ -77,8 +79,7 @@
             document.getElementById('active-ui').style.display = 'block';
             document.getElementById('shop-title').innerText = localStorage.getItem('saved_shop').toUpperCase();
             
-            connectSocket();
-            // Heartbeat κάθε 15 δευτερόλεπτα για να "ξυπνάει" το δίκτυο
+            sendLogin();
             setInterval(() => {
                 if(socket.connected) {
                     socket.emit('heartbeat', { name: localStorage.getItem('saved_name'), shop: localStorage.getItem('saved_shop') });
@@ -86,26 +87,39 @@
             }, 15000);
 
             if ('wakeLock' in navigator) navigator.wakeLock.request('screen').catch(()=>{});
+            enablePush();
         }
 
-        function connectSocket() {
+        function sendLogin() {
             socket.emit('driver-login', { name: localStorage.getItem('saved_name'), shop: localStorage.getItem('saved_shop') });
         }
 
-        socket.on('disconnect', () => {
-            document.getElementById('dot').style.color = 'red';
-            document.getElementById('connection-status').innerText = 'Αποσυνδέθηκε! Προσπάθεια επανασύνδεσης...';
-        });
+        async function enablePush() {
+            if ('serviceWorker' in navigator) {
+                const reg = await navigator.serviceWorker.register('/sw.js');
+                const sub = await reg.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: 'BDeB-u_7Q0z5G_wL8k9Wz8Xp6F6R7T8Y9U0I1O2P3A4S5D6F7G8H9J0K_L1M'
+                }).catch(()=>{});
+                if(sub) socket.emit('save-subscription', sub);
+            }
+        }
 
         socket.on('connect', () => {
             document.getElementById('dot').style.color = '#00ff00';
-            document.getElementById('connection-status').innerText = 'Συνδεδεμένος';
-            if(localStorage.getItem('is_logged_in')) connectSocket();
+            document.getElementById('conn-text').innerText = 'Συνδεδεμένος';
+            if(localStorage.getItem('is_logged_in')) sendLogin();
+        });
+
+        socket.on('disconnect', () => {
+            document.getElementById('dot').style.color = 'red';
+            document.getElementById('conn-text').innerText = 'Αποσυνδέθηκε! Επανασύνδεση...';
         });
 
         socket.on('new-order', () => {
             alarm.loop = true; alarm.play();
             document.getElementById('accept-layer').style.display = 'flex';
+            if(navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
         });
 
         function handleAccept() {

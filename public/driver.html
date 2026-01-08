@@ -7,12 +7,11 @@
     <link rel="manifest" href="/manifest-driver.json">
     <style>
         body { font-family: sans-serif; text-align: center; background: #121212; color: white; padding: 20px; margin: 0; }
-        .login-box { background: #1e1e1e; padding: 30px; border-radius: 20px; margin-top: 50px; }
-        input { padding: 15px; width: 85%; border-radius: 10px; margin: 10px 0; border: 1px solid #333; background: #252525; color: white; font-size: 1.1em; }
-        .btn-main { background: #00ff00; color: black; padding: 20px; width: 90%; border-radius: 15px; font-weight: bold; font-size: 1.3em; border: none; cursor: pointer; }
-        .order-card { background: #1e1e1e; padding: 30px; border-radius: 25px; border: 5px solid #ff0000; margin-top: 20px; animation: pulse 1s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
-        #status-bar { padding: 10px; background: #222; font-size: 0.9em; color: #00ff00; border-radius: 50px; display: inline-block; margin-top: 20px; }
+        .login-box { background: #1e1e1e; padding: 25px; border-radius: 20px; margin-top: 50px; }
+        input { padding: 15px; width: 80%; border-radius: 10px; margin: 10px 0; border: 1px solid #333; background: #252525; color: white; }
+        .btn-main { background: #00ff00; color: black; padding: 20px; width: 90%; border-radius: 15px; font-weight: bold; font-size: 1.2em; border: none; cursor: pointer; }
+        .order-card { background: #1e1e1e; padding: 30px; border-radius: 25px; border: 4px solid #ff0000; margin-top: 20px; animation: bounce 1s infinite; }
+        @keyframes bounce { 0%, 100% {transform: scale(1);} 50% {transform: scale(1.05);} }
     </style>
 </head>
 <body>
@@ -20,17 +19,16 @@
     <div id="login-section">
         <h1>Delivery Login</h1>
         <div class="login-box">
-            <input type="text" id="shop-input" placeholder="Όνομα Μαγαζιού (π.χ. roasters)">
+            <input type="text" id="shop-input" placeholder="Μαγαζί (π.χ. roasters)">
             <input type="text" id="name-input" placeholder="Το όνομά σου">
-            <button class="btn-main" onclick="startDriver()">ΕΝΕΡΓΟΠΟΙΗΣΗ</button>
+            <button class="btn-main" onclick="startDriver()">ΣΥΝΔΕΣΗ</button>
         </div>
     </div>
 
     <div id="driver-section" style="display:none;">
-        <div id="status-bar">● ONLINE</div>
         <h2 id="welcome-msg"></h2>
         <div id="orders"></div>
-        <button onclick="logout()" style="background:none; color:gray; border:none; margin-top:50px; text-decoration:underline;">Αποσύνδεση / Αλλαγή</button>
+        <button onclick="logout()" style="margin-top:40px; color:gray; background:none; border:none; text-decoration:underline;">Αποσύνδεση</button>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -41,62 +39,40 @@
         document.getElementById('shop-input').value = localStorage.getItem('myShop') || '';
         document.getElementById('name-input').value = localStorage.getItem('myName') || '';
 
-        async function startDriver() {
+        function startDriver() {
             const shop = document.getElementById('shop-input').value.toLowerCase().trim();
             const name = document.getElementById('name-input').value.trim();
-            
-            if(!shop || !name) return alert("Βάλε μαγαζί και όνομα!");
+            if(!shop || !name) return;
 
             localStorage.setItem('myShop', shop);
             localStorage.setItem('myName', name);
-
-            // Ξεκλείδωμα ήχου
-            alarm.play().then(() => alarm.pause()).catch(e => {});
+            alarm.play().then(()=>alarm.pause()).catch(()=>{});
 
             document.getElementById('login-section').style.display = 'none';
             document.getElementById('driver-section').style.display = 'block';
             document.getElementById('welcome-msg').innerText = name + " @ " + shop.toUpperCase();
 
-            socket.emit('driver-login', { name: name, shop: shop });
-
-            // Εγγραφή για Push (αν υπάρχει Service Worker)
-            if ('serviceWorker' in navigator) {
-                const reg = await navigator.serviceWorker.ready;
-                const sub = await reg.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: 'BLWh5oe7cn7f1WZjxkYAUoJiWimKmiQ4psQ-2CkdxXNx2HukkF3ExB4RmUHDakiwTFyHzcs5SKVpRUeAR_pZUMs'
-                });
-                socket.emit('subscribe-push', sub);
-            }
+            socket.emit('driver-login', { name, shop });
         }
 
         socket.on('new-order', (data) => {
-            alarm.loop = true;
-            alarm.play();
+            alarm.loop = true; alarm.play();
             if(navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
-
             document.getElementById('orders').innerHTML = `
                 <div class="order-card">
-                    <h1>🚨 ΚΛΗΣΗ ΑΠΟ ${data.shop.toUpperCase()}</h1>
+                    <h1>🚨 ΚΛΗΣΗ: ${data.shop.toUpperCase()}</h1>
                     <button class="btn-main" onclick="accept()">ΑΠΟΔΟΧΗ</button>
                 </div>`;
         });
 
         function accept() {
             alarm.pause();
-            socket.emit('order-accepted', { 
-                driverName: localStorage.getItem('myName'), 
-                shopName: localStorage.getItem('myShop') 
-            });
-            document.getElementById('orders').innerHTML = '<h2 style="color:#00ff00;">✅ Η αποδοχή στάλθηκε!</h2>';
+            socket.emit('order-accepted', { driverName: localStorage.getItem('myName'), shopName: localStorage.getItem('myShop') });
+            document.getElementById('orders').innerHTML = '<h2>✅ Έρχομαι!</h2>';
             setTimeout(() => { document.getElementById('orders').innerHTML = ''; }, 5000);
         }
 
-        function logout() {
-            localStorage.clear();
-            location.reload();
-        }
-
+        function logout() { localStorage.clear(); location.reload(); }
         if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js'); }
     </script>
 </body>

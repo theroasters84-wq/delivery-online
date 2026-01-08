@@ -3,53 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shop - The Roasters</title>
+    <title>Shop Panel</title>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #f4f4f4; padding: 20px; }
-        .card { max-width: 400px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .driver-row { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
-        .btn-call { background: #2ecc71; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        #status-bar { margin-top: 20px; font-weight: bold; font-size: 1.2em; color: #555; }
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #f4f4f4; padding: 20px; }
+        .card { max-width: 450px; margin: auto; background: white; padding: 30px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .driver-card { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f9f9f9; margin-bottom: 10px; border-radius: 15px; border: 1px solid #eee; }
+        .btn-call { background: #2ecc71; color: white; border: none; padding: 12px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        #status-display { margin-top: 20px; padding: 20px; background: #eee; border-radius: 15px; font-weight: bold; font-size: 1.2em; transition: 0.3s; }
+        input { width: 90%; padding: 15px; margin-bottom: 10px; border-radius: 10px; border: 1px solid #ddd; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h2 id="shop-title">Shop Panel</h2>
-        <div id="driver-list">Αναζήτηση διανομέων...</div>
-        <div id="status-bar">ΕΤΟΙΜΟ</div>
+        <div id="setup">
+            <h2>🔐 Είσοδο Shop</h2>
+            <input type="password" id="pw" placeholder="Κωδικός">
+            <input type="text" id="shop-n" placeholder="Όνομα Μαγαζιού">
+            <button onclick="enter()" style="width:100%; padding:15px; background:#3498db; color:white; border:none; border-radius:10px;">ΕΙΣΟΔΟΣ</button>
+        </div>
+
+        <div id="main" style="display:none;">
+            <h1 id="title"></h1>
+            <div id="driver-list"></div>
+            <div id="status-display">ΕΤΟΙΜΟ</div>
+            <button onclick="localStorage.clear(); location.reload();" style="margin-top:20px; border:none; background:none; color:gray; text-decoration:underline;">Αποσύνδεση</button>
+        </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        let myShop = localStorage.getItem('activeShop') || prompt("Όνομα Μαγαζιού:");
-        if(myShop) {
-            myShop = myShop.toLowerCase().trim();
-            localStorage.setItem('activeShop', myShop);
-            document.getElementById('shop-title').innerText = myShop.toUpperCase();
-            socket.emit('join-shop', myShop);
+        const KEY = "1234";
+
+        if(localStorage.getItem('shop_room')) show();
+
+        function enter() {
+            if(document.getElementById('pw').value !== KEY) return alert("Λάθος κωδικός");
+            localStorage.setItem('shop_room', document.getElementById('shop-n').value.toLowerCase().trim());
+            location.reload();
+        }
+
+        function show() {
+            document.getElementById('setup').style.display = 'none';
+            document.getElementById('main').style.display = 'block';
+            const room = localStorage.getItem('shop_room');
+            document.getElementById('title').innerText = room.toUpperCase();
+            socket.emit('join-shop', room);
         }
 
         socket.on('update-drivers', (drivers) => {
             const list = document.getElementById('driver-list');
             list.innerHTML = "";
             Object.keys(drivers).forEach(id => {
-                list.innerHTML += `
-                    <div class="driver-row">
-                        <span>👤 ${drivers[id]}</span>
-                        <button class="btn-call" onclick="callDriver('${id}')">ΚΛΗΣΗ</button>
-                    </div>`;
+                list.innerHTML += `<div class="driver-card"><span>👤 ${drivers[id]}</span><button class="btn-call" onclick="call('${id}')">ΚΛΗΣΗ</button></div>`;
             });
         });
 
-        function callDriver(id) {
-            socket.emit('call-driver', { driverId: id, shop: myShop });
-            document.getElementById('status-bar').innerText = "Κλήση σε εξέλιξη...";
+        function call(id) {
+            socket.emit('call-driver', { driverId: id, shop: localStorage.getItem('shop_room') });
+            document.getElementById('status-display').innerText = "Κλήση σε εξέλιξη...";
+            document.getElementById('status-display').style.background = "#ffc107";
         }
 
         socket.on('driver-accepted', (data) => {
-            document.getElementById('status-bar').innerText = "✅ " + data.driverName + " ΕΡΧΕΤΑΙ!";
-            setTimeout(() => { document.getElementById('status-bar').innerText = "ΕΤΟΙΜΟ"; }, 5000);
+            const sd = document.getElementById('status-display');
+            sd.innerText = "✅ " + data.driverName + " ΑΠΟΔΕΧΤΗΚΕ!";
+            sd.style.background = "#2ecc71";
+            sd.style.color = "white";
+            new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
+            setTimeout(() => { 
+                sd.style.background = "#eee"; sd.style.color = "#333"; sd.innerText = "ΕΤΟΙΜΟ"; 
+            }, 8000);
         });
     </script>
 </body>

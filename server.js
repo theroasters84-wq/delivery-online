@@ -11,18 +11,31 @@ const io = new Server(server);
 app.use(express.json());
 app.use(express.static('public'));
 
+// VAPID Keys (Κράτα τα ίδια)
 const publicVapidKey = 'BLWh5oe7cn7f1WZjxkYAUoJiWimKmiQ4psQ-2CkdxXNx2HukkF3ExB4RmUHDakiwTFyHzcs5SKVpRUeAR_pZUMs';
 const privateVapidKey = 'h0TuE6vul1BuU5EpmNQBVyKe7sgGMb_mgf5h66CgPYU';
-
 webpush.setVapidDetails('mailto:theroasters84@gmail.com', publicVapidKey, privateVapidKey);
 
-let drivers = {};
 let subscriptions = {}; 
 
 io.on('connection', (socket) => {
-    socket.on('driver-login', (name) => {
-        drivers[socket.id] = name;
-        io.emit('update-drivers', drivers);
+    
+    // Είσοδος Μαγαζιού
+    socket.on('join-shop', (shopName) => {
+        const cleanShop = shopName.toLowerCase().trim();
+        socket.join(cleanShop);
+        socket.currentShop = cleanShop;
+        socket.isShop = true;
+        updateDriversInShop(cleanShop);
+    });
+
+    // Είσοδος Ντελιβερά
+    socket.on('driver-login', (data) => {
+        const cleanShop = data.shop.toLowerCase().trim();
+        socket.driverName = data.name;
+        socket.currentShop = cleanShop;
+        socket.join(cleanShop);
+        updateDriversInShop(cleanShop);
     });
 
     socket.on('subscribe-push', (subscription) => {
@@ -30,30 +43,44 @@ io.on('connection', (socket) => {
     });
 
     socket.on('call-driver', (data) => {
-        io.to(data.driverId).emit('new-order', { time: data.time });
+        // data: { driverId, time, shop }
+        io.to(data.driverId).emit('new-order', { time: data.time, shop: data.shop });
+        
         const sub = subscriptions[data.driverId];
         if (sub) {
             const payload = JSON.stringify({
-                title: '🚨 THE ROASTERS: ΚΛΗΣΗ!',
-                body: `Νέα παραγγελία - Ώρα: ${data.time}`,
-                url: '/driver.html'
+                title: `🚨 ${data.shop.toUpperCase()}`,
+                body: `Νέα παραγγελία - ${data.time}`,
+                url: `/driver.html`
             });
-            webpush.sendNotification(sub, payload).catch(err => console.error(err));
+            webpush.sendNotification(sub, payload).catch(e => console.error(e));
         }
     });
 
-    // ΔΙΟΡΘΩΣΗ ΕΔΩ: Στέλνουμε σε ΟΛΟΥΣ ότι η παραγγελία έγινε αποδεκτή
     socket.on('order-accepted', (data) => {
-        console.log("Αποδοχή από:", data.driverName);
-        io.emit('driver-accepted', data); 
+        // Στέλνουμε την αποδοχή ΜΟΝΟ στο δωμάτιο του συγκεκριμένου μαγαζιού
+        io.to(data.shopName.toLowerCase().trim()).emit('driver-accepted', data);
     });
 
     socket.on('disconnect', () => {
-        delete drivers[socket.id];
+        const shop = socket.currentShop;
         delete subscriptions[socket.id];
-        io.emit('update-drivers', drivers);
+        if (shop) updateDriversInShop(shop);
     });
+
+    function updateDriversInShop(shopName) {
+        const driversInShop = {};
+        const clients = io.sockets.adapter.rooms.get(shopName);
+        if (clients) {
+            for (const clientId of clients) {
+                const clientSocket = io.sockets.sockets.get(clientId);
+                if (clientSocket && clientSocket.driverName) {
+                    driversInShop[clientId] = clientSocket.driverName;
+                }
+            }
+        }
+        io.to(shopName).emit('update-drivers', driversInShop);
+    }
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server started on port ${PORT}`));
+server.listen(process.env.PORT || 3000);

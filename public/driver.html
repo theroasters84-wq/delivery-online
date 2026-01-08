@@ -1,79 +1,99 @@
-<!DOCTYPE html>
-<html lang="el">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Driver Panel - The Roasters</title>
-    <link rel="manifest" href="/manifest-driver.json">
-    <style>
-        body { font-family: sans-serif; text-align: center; background: #121212; color: white; padding: 20px; margin: 0; }
-        .login-box { background: #1e1e1e; padding: 25px; border-radius: 20px; margin-top: 50px; }
-        input { padding: 15px; width: 80%; border-radius: 10px; margin: 10px 0; border: 1px solid #333; background: #252525; color: white; }
-        .btn-main { background: #00ff00; color: black; padding: 20px; width: 90%; border-radius: 15px; font-weight: bold; font-size: 1.2em; border: none; cursor: pointer; }
-        .order-card { background: #1e1e1e; padding: 30px; border-radius: 25px; border: 4px solid #ff0000; margin-top: 20px; animation: bounce 1s infinite; }
-        @keyframes bounce { 0%, 100% {transform: scale(1);} 50% {transform: scale(1.05);} }
-    </style>
-</head>
-<body>
+<style>
+    /* Full screen στυλ για το κουμπί αποδοχής */
+    .fullscreen-btn {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: #00ff00;
+        color: black;
+        border: none;
+        font-size: 3em;
+        font-weight: bold;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        animation: blink 0.8s infinite;
+    }
 
-    <div id="login-section">
-        <h1>Delivery Login</h1>
-        <div class="login-box">
-            <input type="text" id="shop-input" placeholder="Μαγαζί (π.χ. roasters)">
-            <input type="text" id="name-input" placeholder="Το όνομά σου">
+    @keyframes blink {
+        0% { background: #00ff00; }
+        50% { background: #008800; }
+        100% { background: #00ff00; }
+    }
+
+    .idle-mode { background: #121212; color: #444; }
+</style>
+
+<body class="idle-mode">
+    <div id="app-content">
+        <div id="login-section">
+            <h1>Delivery Login</h1>
+            <input type="text" id="shop-input" placeholder="Μαγαζί">
+            <input type="text" id="name-input" placeholder="Όνομα">
             <button class="btn-main" onclick="startDriver()">ΣΥΝΔΕΣΗ</button>
+        </div>
+
+        <div id="driver-section" style="display:none;">
+            <h2 id="welcome-msg" style="color: #666;"></h2>
+            <p>Αναμονή για παραγγελία...</p>
+            <div id="order-trigger"></div>
+            <button onclick="logout()" style="margin-top:100px; color:gray; background:none; border:none;">Αποσύνδεση</button>
         </div>
     </div>
 
-    <div id="driver-section" style="display:none;">
-        <h2 id="welcome-msg"></h2>
-        <div id="orders"></div>
-        <button onclick="logout()" style="margin-top:40px; color:gray; background:none; border:none; text-decoration:underline;">Αποσύνδεση</button>
-    </div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = io();
+    const alarm = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        const socket = io();
-        const alarm = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+    function startDriver() {
+        const shop = document.getElementById('shop-input').value.toLowerCase().trim();
+        const name = document.getElementById('name-input').value.trim();
+        if(!shop || !name) return;
+        
+        localStorage.setItem('myShop', shop);
+        localStorage.setItem('myName', name);
+        
+        document.getElementById('login-section').style.display = 'none';
+        document.getElementById('driver-section').style.display = 'block';
+        document.getElementById('welcome-msg').innerText = name + " @ " + shop.toUpperCase();
+        
+        socket.emit('driver-login', { name, shop });
+    }
 
-        document.getElementById('shop-input').value = localStorage.getItem('myShop') || '';
-        document.getElementById('name-input').value = localStorage.getItem('myName') || '';
+    socket.on('new-order', (data) => {
+        alarm.loop = true;
+        alarm.play();
+        if(navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
 
-        function startDriver() {
-            const shop = document.getElementById('shop-input').value.toLowerCase().trim();
-            const name = document.getElementById('name-input').value.trim();
-            if(!shop || !name) return;
+        // Εμφάνιση του τεράστιου πράσινου κουμπιού σε όλη την οθόνη
+        document.getElementById('order-trigger').innerHTML = `
+            <button class="fullscreen-btn" onclick="acceptOrder()">
+                ΠΑΤΗΣΕ ΓΙΑ<br>ΑΠΟΔΟΧΗ<br>
+                <span style="font-size: 0.5em; margin-top: 20px;">ΑΠΟ: ${data.shop.toUpperCase()}</span>
+            </button>`;
+    });
 
-            localStorage.setItem('myShop', shop);
-            localStorage.setItem('myName', name);
-            alarm.play().then(()=>alarm.pause()).catch(()=>{});
-
-            document.getElementById('login-section').style.display = 'none';
-            document.getElementById('driver-section').style.display = 'block';
-            document.getElementById('welcome-msg').innerText = name + " @ " + shop.toUpperCase();
-
-            socket.emit('driver-login', { name, shop });
-        }
-
-        socket.on('new-order', (data) => {
-            alarm.loop = true; alarm.play();
-            if(navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
-            document.getElementById('orders').innerHTML = `
-                <div class="order-card">
-                    <h1>🚨 ΚΛΗΣΗ: ${data.shop.toUpperCase()}</h1>
-                    <button class="btn-main" onclick="accept()">ΑΠΟΔΟΧΗ</button>
-                </div>`;
+    function acceptOrder() {
+        alarm.pause();
+        alarm.currentTime = 0;
+        socket.emit('order-accepted', { 
+            driverName: localStorage.getItem('myName'), 
+            shopName: localStorage.getItem('myShop') 
         });
+        
+        // Καθαρισμός και επαναφορά στην αναμονή
+        document.getElementById('order-trigger').innerHTML = '<h2 style="color:#00ff00;">✅ ΕΓΙΝΕ! ΕΡΧΟΜΑΙ</h2>';
+        setTimeout(() => {
+            document.getElementById('order-trigger').innerHTML = '';
+        }, 4000);
+    }
 
-        function accept() {
-            alarm.pause();
-            socket.emit('order-accepted', { driverName: localStorage.getItem('myName'), shopName: localStorage.getItem('myShop') });
-            document.getElementById('orders').innerHTML = '<h2>✅ Έρχομαι!</h2>';
-            setTimeout(() => { document.getElementById('orders').innerHTML = ''; }, 5000);
-        }
-
-        function logout() { localStorage.clear(); location.reload(); }
-        if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js'); }
-    </script>
+    function logout() { localStorage.clear(); location.reload(); }
+</script>
 </body>
-</html>

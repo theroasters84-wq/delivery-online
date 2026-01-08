@@ -3,13 +3,13 @@
   "name": "Roasters Driver",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/171/171253.png",
+      "src": "https://img.icons8.com/color/512/motorcycle.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any"
     },
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/171/171253.png",
+      "src": "https://img.icons8.com/color/192/motorcycle.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any"

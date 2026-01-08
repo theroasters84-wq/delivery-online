@@ -1,7 +1,6 @@
 {
-  "short_name": "Roasters Driver",
-  "name": "The Roasters Delivery App",
-  "description": "Εφαρμογή Διανομέων για το The Roasters",
+  "short_name": "Driver",
+  "name": "Roasters Driver",
   "icons": [
     {
       "src": "https://cdn-icons-png.flaticon.com/512/2830/2830305.png",
@@ -11,12 +10,8 @@
     }
   ],
   "start_url": "/driver.html",
+  "background_color": "#000000",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#121212",
-  "theme_color": "#00ff00",
   "scope": "/",
-  "serviceworker": {
-    "src": "/sw.js"
-  }
+  "theme_color": "#000000"
 }

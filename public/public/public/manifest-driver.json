@@ -6,19 +6,18 @@
       "src": "https://cdn-icons-png.flaticon.com/512/171/171253.png",
       "type": "image/png",
       "sizes": "512x512",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "https://cdn-icons-png.flaticon.com/512/171/171253.png",
       "type": "image/png",
       "sizes": "192x192",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ],
-  "start_url": "/driver.html",
+  "start_url": "/driver.html?v=2",
   "background_color": "#000000",
   "display": "standalone",
-  "display_override": ["fullscreen", "standalone"],
   "orientation": "portrait",
   "scope": "/",
   "theme_color": "#000000"

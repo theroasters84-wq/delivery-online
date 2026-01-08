@@ -2,141 +2,65 @@
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Roasters - Shop Panel</title>
-    
+    <title>Shop Panel</title>
     <link rel="manifest" href="/manifest.json">
-    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/924/924514.png">
-    <meta name="theme-color" content="#e67e22">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-
     <style>
-        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #f0f2f5; padding: 20px; margin: 0; }
-        .container { max-width: 600px; margin: auto; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        h1 { color: #1a1a1a; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-        
-        .driver-box { 
-            background: #fff; 
-            padding: 20px; 
-            margin: 15px 0; 
-            border-radius: 15px; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            border: 2px solid #eaeaea;
-            transition: all 0.3s ease;
-        }
-        .driver-box:hover { border-color: #e67e22; transform: translateY(-2px); }
-        .driver-name { font-size: 1.3em; font-weight: bold; color: #333; }
-        
-        .btn-call { 
-            background: #e67e22; 
-            color: white; 
-            border: none; 
-            padding: 12px 25px; 
-            border-radius: 10px; 
-            cursor: pointer; 
-            font-weight: bold; 
-            font-size: 1em;
-            box-shadow: 0 4px #d35400;
-        }
-        .btn-call:active { transform: translateY(2px); box-shadow: none; }
-
-        #status-display { 
-            margin-top: 30px; 
-            padding: 30px; 
-            border-radius: 15px; 
-            font-size: 1.5em; 
-            font-weight: bold;
-            background: #ffffff; 
-            color: #999;
-            border: 4px dashed #ddd;
-            transition: all 0.4s ease;
-        }
-
-        .status-accepted { 
-            background: #27ae60 !important; 
-            color: white !important; 
-            border: 4px solid #1e8449 !important;
-            animation: bounce 0.6s ease;
-        }
-
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-
-        .no-drivers { color: #bbb; padding: 40px; font-style: italic; }
+        body { font-family: sans-serif; text-align: center; background: #f4f4f4; }
+        .card { max-width: 400px; margin: 20px auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .driver { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; align-items: center; }
+        .btn-call { background: #e67e22; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
+        #status { margin-top: 20px; padding: 15px; border-radius: 10px; font-weight: bold; background: #ddd; }
+        .ok { background: #27ae60 !important; color: white; }
     </style>
 </head>
 <body>
-
-    <div class="container">
-        <h1>The Roasters - Shop Panel ☕</h1>
-        
-        <div id="driver-list">
-            <p class="no-drivers">Αναμονή για σύνδεση ντελιβεράδων...</p>
-        </div>
-        
-        <div id="status-display">
-            ΕΤΟΙΜΟ ΓΙΑ ΚΛΗΣΗ
-        </div>
+    <div class="card">
+        <h2 id="title">Shop</h2>
+        <div id="list"></div>
+        <div id="status">ΑΝΑΜΟΝΗ</div>
     </div>
-
-    <audio id="success-sound" src="https://actions.google.com/sounds/v1/notifications/positive_notification.ogg"></audio>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        const statusDisplay = document.getElementById('status-display');
-        const driverList = document.getElementById('driver-list');
-        const successSound = document.getElementById('success-sound');
+        const params = new URLSearchParams(window.location.search);
+        let shopName = params.get('name');
+
+        if(!shopName) {
+            shopName = prompt("Όνομα μαγαζιού:").toLowerCase();
+            window.location.search = `?name=${shopName}`;
+        }
+
+        document.getElementById('title').innerText = "Μαγαζί: " + shopName.toUpperCase();
+
+        socket.on('connect', () => {
+            socket.emit('join-shop', shopName);
+        });
 
         socket.on('update-drivers', (drivers) => {
-            if (Object.keys(drivers).length === 0) {
-                driverList.innerHTML = '<p class="no-drivers">❌ Κανένας ντελιβεράς online</p>';
-                return;
-            }
-
-            driverList.innerHTML = "";
+            const list = document.getElementById('list');
+            list.innerHTML = Object.keys(drivers).length === 0 ? "Κανένας Online" : "";
             for (let id in drivers) {
-                driverList.innerHTML += `
-                    <div class="driver-box">
-                        <span class="driver-name">👤 ${drivers[id]}</span>
-                        <button class="btn-call" onclick="callDriver('${id}', '${drivers[id]}')">🔔 ΚΛΗΣΗ</button>
+                list.innerHTML += `
+                    <div class="driver">
+                        <span>👤 ${drivers[id]}</span>
+                        <button class="btn-call" onclick="call('${id}', '${drivers[id]}')">ΚΛΗΣΗ</button>
                     </div>`;
             }
         });
 
-        function callDriver(id, name) {
-            const time = new Date().toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' });
-            socket.emit('call-driver', { driverId: id, time: time });
-            
-            statusDisplay.innerText = "Καλούμε τον " + name + "...";
-            statusDisplay.classList.remove('status-accepted');
-            statusDisplay.style.color = "#856404";
-            statusDisplay.style.background = "#fff3cd";
-            statusDisplay.style.borderColor = "#ffeeba";
+        function call(id, name) {
+            socket.emit('call-driver', { driverId: id, time: new Date().toLocaleTimeString(), shop: shopName });
+            document.getElementById('status').innerText = "Καλούμε: " + name;
         }
 
         socket.on('driver-accepted', (data) => {
-            statusDisplay.innerText = "✅ Ο " + data.driverName + " ΑΠΟΔΕΧΤΗΚΕ!";
-            statusDisplay.classList.add('status-accepted');
-            successSound.play();
-
-            setTimeout(() => {
-                statusDisplay.innerText = "ΕΤΟΙΜΟ ΓΙΑ ΚΛΗΣΗ";
-                statusDisplay.classList.remove('status-accepted');
-                statusDisplay.style.background = "#ffffff";
-                statusDisplay.style.color = "#999";
-                statusDisplay.style.borderColor = "#ddd";
-            }, 10000);
+            const s = document.getElementById('status');
+            s.innerText = "✅ " + data.driverName + " ΑΠΟΔΕΧΤΗΚΕ";
+            s.classList.add('ok');
+            new Audio('https://actions.google.com/sounds/v1/notifications/positive_notification.ogg').play();
+            setTimeout(() => { s.classList.remove('ok'); s.innerText = "ΑΝΑΜΟΝΗ"; }, 7000);
         });
-
-        // Register Service Worker for Shop (Optional but helps with PWA)
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js');
-        }
     </script>
 </body>
 </html>

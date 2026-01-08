@@ -2,64 +2,122 @@
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <title>Shop Panel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shop Panel - The Roasters System</title>
     <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/924/924514.png">
     <style>
-        body { font-family: sans-serif; text-align: center; background: #f4f4f4; }
-        .card { max-width: 400px; margin: 20px auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .driver { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; align-items: center; }
-        .btn-call { background: #e67e22; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
-        #status { margin-top: 20px; padding: 15px; border-radius: 10px; font-weight: bold; background: #ddd; }
-        .ok { background: #27ae60 !important; color: white; }
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #f4f4f4; margin: 0; padding: 20px; }
+        .card { max-width: 500px; margin: 20px auto; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        h2 { color: #333; margin-bottom: 5px; }
+        .shop-badge { display: inline-block; background: #e67e22; color: white; padding: 5px 15px; border-radius: 50px; font-size: 0.9em; margin-bottom: 20px; cursor: pointer; }
+        .driver { display: flex; justify-content: space-between; padding: 15px; border-bottom: 1px solid #eee; align-items: center; }
+        .btn-call { background: #2ecc71; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-call:hover { background: #27ae60; transform: scale(1.05); }
+        #status { margin-top: 25px; padding: 20px; border-radius: 12px; font-weight: bold; background: #ececec; color: #666; font-size: 1.2em; border: 2px dashed #ccc; }
+        .ok { background: #27ae60 !important; color: white !important; border: 2px solid #1e8449 !important; animation: bounce 0.5s; }
+        @keyframes bounce { 0%, 100% {transform: scale(1);} 50% {transform: scale(1.05);} }
+        .btn-switch { background: none; border: 1px solid #ccc; color: #888; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.8em; margin-top: 10px; }
     </style>
 </head>
 <body>
+
     <div class="card">
-        <h2 id="title">Shop</h2>
-        <div id="list"></div>
-        <div id="status">ΑΝΑΜΟΝΗ</div>
+        <h2>Πίνακας Καταστήματος</h2>
+        <div class="shop-badge" id="display-shop-name" onclick="changeShop()">Φόρτωση...</div>
+        
+        <div id="list">
+            <p style="color: #999;">Αναζήτηση ντελιβεράδων...</p>
+        </div>
+
+        <div id="status">ΕΤΟΙΜΟ ΓΙΑ ΚΛΗΣΗ</div>
+        
+        <button class="btn-switch" onclick="changeShop()">🔄 Αλλαγή Μαγαζιού</button>
     </div>
+
+    <audio id="success-sound" src="https://actions.google.com/sounds/v1/notifications/positive_notification.ogg"></audio>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        const params = new URLSearchParams(window.location.search);
-        let shopName = params.get('name');
+        const successSound = document.getElementById('success-sound');
+        let currentShop = "";
 
-        if(!shopName) {
-            shopName = prompt("Όνομα μαγαζιού:").toLowerCase();
-            window.location.search = `?name=${shopName}`;
+        // Λειτουργία για είσοδο/αλλαγή μαγαζιού
+        function initShop() {
+            let savedShop = localStorage.getItem('activeShop');
+            let name = prompt("Σε ποιο μαγαζί θέλετε να συνδεθείτε;", savedShop || "");
+            
+            if (!name) {
+                if (!savedShop) {
+                    alert("Πρέπει να δώσετε ένα όνομα!");
+                    location.reload();
+                }
+                name = savedShop;
+            }
+
+            currentShop = name.toLowerCase().trim();
+            localStorage.setItem('activeShop', currentShop);
+            document.getElementById('display-shop-name').innerText = "🏢 " + currentShop.toUpperCase();
+            
+            // Ενημέρωση του Server
+            socket.emit('join-shop', currentShop);
         }
 
-        document.getElementById('title').innerText = "Μαγαζί: " + shopName.toUpperCase();
+        function changeShop() {
+            const confirmNew = confirm("Θέλετε να αλλάξετε κατάστημα;");
+            if(confirmNew) {
+                localStorage.removeItem('activeShop');
+                location.reload();
+            }
+        }
 
-        socket.on('connect', () => {
-            socket.emit('join-shop', shopName);
-        });
+        // Αρχική εκκίνηση
+        initShop();
 
         socket.on('update-drivers', (drivers) => {
-            const list = document.getElementById('list');
-            list.innerHTML = Object.keys(drivers).length === 0 ? "Κανένας Online" : "";
-            for (let id in drivers) {
-                list.innerHTML += `
-                    <div class="driver">
-                        <span>👤 ${drivers[id]}</span>
-                        <button class="btn-call" onclick="call('${id}', '${drivers[id]}')">ΚΛΗΣΗ</button>
-                    </div>`;
+            const listDiv = document.getElementById('list');
+            const driverIds = Object.keys(drivers);
+            
+            if (driverIds.length === 0) {
+                listDiv.innerHTML = `<p style="color: #999; padding: 20px;">❌ Κανένας ντελιβεράς online στο "${currentShop}"</p>`;
+                return;
             }
+
+            listDiv.innerHTML = "";
+            driverIds.forEach(id => {
+                listDiv.innerHTML += `
+                    <div class="driver">
+                        <span style="font-weight: bold; color: #333;">👤 ${drivers[id]}</span>
+                        <button class="btn-call" onclick="callDriver('${id}', '${drivers[id]}')">🔔 ΚΛΗΣΗ</button>
+                    </div>`;
+            });
         });
 
-        function call(id, name) {
-            socket.emit('call-driver', { driverId: id, time: new Date().toLocaleTimeString(), shop: shopName });
-            document.getElementById('status').innerText = "Καλούμε: " + name;
+        function callDriver(id, name) {
+            const time = new Date().toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' });
+            socket.emit('call-driver', { 
+                driverId: id, 
+                time: time, 
+                shop: currentShop 
+            });
+            
+            const status = document.getElementById('status');
+            status.innerText = "Αναμονή από " + name + "...";
+            status.style.background = "#fff3cd";
         }
 
         socket.on('driver-accepted', (data) => {
-            const s = document.getElementById('status');
-            s.innerText = "✅ " + data.driverName + " ΑΠΟΔΕΧΤΗΚΕ";
-            s.classList.add('ok');
-            new Audio('https://actions.google.com/sounds/v1/notifications/positive_notification.ogg').play();
-            setTimeout(() => { s.classList.remove('ok'); s.innerText = "ΑΝΑΜΟΝΗ"; }, 7000);
+            const status = document.getElementById('status');
+            status.innerText = "✅ Ο " + data.driverName + " ΕΡΧΕΤΑΙ!";
+            status.classList.add('ok');
+            successSound.play();
+
+            setTimeout(() => {
+                status.classList.remove('ok');
+                status.innerText = "ΕΤΟΙΜΟ ΓΙΑ ΚΛΗΣΗ";
+                status.style.background = "#ececec";
+            }, 8000);
         });
     </script>
 </body>

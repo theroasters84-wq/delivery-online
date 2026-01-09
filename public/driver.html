@@ -24,16 +24,16 @@
 
     <div id="login-ui" style="display:none;">
         <input type="text" id="shop" placeholder="Μαγαζί">
-        <input type="text" id="name" placeholder="Το όνομά σου">
+        <input type="text" id="name" placeholder="Το όνομα σου">
         <input type="password" id="pass" placeholder="Κωδικός (1234)">
         <button class="btn" style="background:#28a745; color:#fff;" onclick="login()">ONLINE</button>
     </div>
 
     <div id="active-ui" style="display:none;">
         <h1 id="display-shop" style="color:#ffc107;"></h1>
-        <p style="color:#0f0; font-size: 1.5em;">● ONLINE</p>
+        <div style="color:#0f0; font-size: 1.5em; margin-bottom: 10px;">● ONLINE</div>
         <p id="display-name"></p>
-        <p style="color: #444; font-size: 0.8em;">Heartbeat active...</p>
+        <p id="connection-status" style="color: #333; font-size: 0.7em;">Stable</p>
     </div>
 
     <div id="accept-layer" onclick="acceptOrder()">
@@ -43,7 +43,11 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io({ reconnection: true, reconnectionAttempts: Infinity, reconnectionDelay: 1000 });
+        const socket = io({ 
+            reconnection: true, 
+            reconnectionAttempts: Infinity, 
+            reconnectionDelay: 500 
+        });
         const alarm = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
 
         let wakeLock = null;
@@ -75,12 +79,13 @@
 
             socket.emit('driver-login', { shop: s, name: n });
             requestWakeLock();
-
-            // HEARTBEAT: Στέλνει σήμα κάθε 10 δευτερόλεπτα για να μην "κοιμηθεί" η σύνδεση
-            setInterval(() => {
-                socket.emit('heartbeat', { name: n });
-            }, 10000);
         }
+
+        // ΛΗΨΗ ΑΟΡΑΤΟΥ ΣΗΜΑΤΟΣ (Keep-Alive)
+        socket.on('silent-keep-alive', () => {
+            console.log("Keep-alive received from server");
+            document.getElementById('connection-status').innerText = "Stable: " + new Date().toLocaleTimeString();
+        });
 
         socket.on('new-order', () => {
             alarm.loop = true;
@@ -99,7 +104,6 @@
             });
         }
 
-        // Αν η οθόνη ξανανοίξει, ξαναζήτα το κλείδωμα οθόνης
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') requestWakeLock();
         });

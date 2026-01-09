@@ -12,8 +12,7 @@
         #bot-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 2000; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         #accept-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: red; display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; animation: blink 0.4s infinite; }
         @keyframes blink { 0% { background: red; } 50% { background: #400; } 100% { background: red; } }
-        #status-light { width: 12px; height: 12px; background: red; border-radius: 50%; display: inline-block; margin-right: 5px; }
-        .logout-link { color: #ff4757; text-decoration: underline; margin-top: 40px; background: none; border: none; font-size: 1em; cursor: pointer; }
+        .logout-link { color: #ff4757; text-decoration: underline; margin-top: 40px; background: none; border: none; font-size: 1em; }
     </style>
 </head>
 <body>
@@ -21,97 +20,72 @@
     <div id="bot-overlay">
         <img src="https://img.icons8.com/color/512/motorcycle.png" width="100">
         <h2>ROASTERS DRIVER</h2>
-        <button class="btn" onclick="unlockAudio()">ΕΝΕΡΓΟΠΟΙΗΣΗ</button>
+        <button class="btn" onclick="unlockAudio()">ΕΝΕΡΓΟΠΟΙΗΣΗ ΗΧΟΥ</button>
     </div>
 
     <div id="login-ui" style="display:none;">
-        <h3>Σύνδεση Βάρδιας</h3>
         <input type="text" id="shop" placeholder="Μαγαζί">
-        <input type="text" id="name" placeholder="Το όνομα σου">
+        <input type="text" id="name" placeholder="Όνομα">
         <input type="password" id="pass" placeholder="Κωδικός (1234)">
-        <button class="btn" style="background:#28a745; color:#fff;" onclick="login()">ΣΥΝΔΕΣΗ & ONLINE</button>
+        <button class="btn" style="background:#28a745; color:#fff;" onclick="login()">ΣΥΝΔΕΣΗ</button>
     </div>
 
     <div id="active-ui" style="display:none;">
-        <h1 id="display-shop" style="color:#ffc107; margin-bottom: 5px;"></h1>
-        <div><span id="status-light"></span> <span id="conn-text">Σύνδεση...</span></div>
-        <p id="display-name" style="color: #888; font-size: 1.2em;"></p>
-        
-        <p style="font-size: 0.8em; color: #333; margin-top: 20px;">Μόνιμη επικοινωνία: Ενεργή</p>
-        
+        <h1 id="display-shop" style="color:#ffc107;"></h1>
+        <div id="status-text" style="color:#0f0;">● ΣΥΝΔΕΔΕΜΕΝΟΣ</div>
+        <p id="display-name" style="color: #888;"></p>
         <button class="logout-link" onclick="logout()">ΕΞΟΔΟΣ ΑΠΟ ΒΑΡΔΙΑ</button>
     </div>
 
     <div id="accept-layer" onclick="acceptOrder()">
         <h1 style="font-size: 3.5em; font-weight: 900;">ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ</h1>
-        <p style="font-size: 1.5em;">ΠΑΤΑ ΓΙΑ ΑΠΟΔΟΧΗ</p>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io({ reconnection: true, reconnectionDelay: 500 });
         const alarm = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
-        let heartbeatInterval = null;
 
         function unlockAudio() {
             alarm.play().then(() => {
                 alarm.pause();
                 document.getElementById('bot-overlay').style.display = 'none';
-                
-                // Αν έχει ήδη στοιχεία, μπες αυτόματα
-                if (localStorage.getItem('shop') && localStorage.getItem('name')) {
-                    startSession();
-                } else {
-                    document.getElementById('login-ui').style.display = 'block';
-                }
+                if (localStorage.getItem('shop')) startSession();
+                else document.getElementById('login-ui').style.display = 'block';
             });
         }
 
         function login() {
             const s = document.getElementById('shop').value.toLowerCase().trim();
             const n = document.getElementById('name').value.trim();
-            const p = document.getElementById('pass').value;
-
-            if (p !== "1234") return alert("Λάθος κωδικός!");
-            if (!s || !n) return alert("Συμπλήρωσε τα στοιχεία!");
-            
+            if (document.getElementById('pass').value !== "1234") return alert("Λάθος κωδικός!");
             localStorage.setItem('shop', s);
             localStorage.setItem('name', n);
             startSession();
         }
 
         function startSession() {
-            const s = localStorage.getItem('shop');
-            const n = localStorage.getItem('name');
-
             document.getElementById('login-ui').style.display = 'none';
             document.getElementById('active-ui').style.display = 'block';
+            const s = localStorage.getItem('shop');
+            const n = localStorage.getItem('name');
             document.getElementById('display-shop').innerText = s.toUpperCase();
             document.getElementById('display-name').innerText = n;
-
             socket.emit('driver-login', { shop: s, name: n });
-            
-            // Ξεκίνα το δυνατό Heartbeat
-            if (heartbeatInterval) clearInterval(heartbeatInterval);
-            heartbeatInterval = setInterval(() => {
-                if (socket.connected) {
-                    socket.emit('force-alive', { name: n });
-                }
-            }, 5000);
         }
 
-        socket.on('alive-confirm', () => {
-            const light = document.getElementById('status-light');
-            light.style.background = '#0f0';
-            document.getElementById('conn-text').innerText = "ONLINE";
-            setTimeout(() => { light.style.background = '#080'; }, 200);
+        // ΤΟ ΨΕΥΤΙΚΟ ΣΗΜΑ ΠΟΥ ΚΡΑΤΑΕΙ ΤΗΝ ΕΦΑΡΜΟΓΗ ΖΩΝΤΑΝΗ
+        socket.on('data-pulse', (data) => {
+            console.log("Pulse received: " + data.timestamp);
+            // Κάνουμε μια μικρή αλλαγή στο UI για να θεωρήσει ο browser ότι η σελίδα είναι ενεργή
+            document.getElementById('status-text').style.opacity = (document.getElementById('status-text').style.opacity == "0.8" ? "1" : "0.8");
         });
 
         socket.on('new-order', () => {
             alarm.loop = true;
-            alarm.play();
+            alarm.play().catch(() => alert("ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ!"));
             document.getElementById('accept-layer').style.display = 'flex';
-            if(navigator.vibrate) navigator.vibrate([1000, 500, 1000, 500, 1000]);
+            if(navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
         });
 
         function acceptOrder() {
@@ -125,16 +99,16 @@
         }
 
         function logout() {
-            if (confirm("Θέλεις να βγεις από τη βάρδια;")) {
-                clearInterval(heartbeatInterval);
-                localStorage.clear();
-                location.reload(); // Επιστροφή στην αρχή
-            }
+            localStorage.clear();
+            location.reload();
         }
 
-        socket.on('disconnect', () => {
-            document.getElementById('status-light').style.background = 'red';
-            document.getElementById('conn-text').innerText = "ΑΠΟΣΥΝΔΕΣΗ!";
+        // ΕΠΑΝΑΣΥΝΔΕΣΗ ΜΟΛΙΣ ΑΝΟΙΞΕΙ Η ΟΘΟΝΗ
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && socket.disconnected) {
+                socket.connect();
+                if (localStorage.getItem('shop')) startSession();
+            }
         });
     </script>
 </body>

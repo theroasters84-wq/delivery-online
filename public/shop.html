@@ -3,34 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shop Dashboard</title>
+    <title>Roasters Shop</title>
+    <link rel="manifest" href="/manifest-shop.json">
     <style>
         body { background: #121212; color: white; font-family: sans-serif; text-align: center; padding: 20px; }
         .card { background: #1e1e1e; padding: 25px; border-radius: 20px; max-width: 450px; margin: auto; border: 1px solid #333; }
-        .btn-main { background: #ffc107; color: black; padding: 15px; border-radius: 12px; font-weight: bold; width: 100%; border: none; cursor: pointer; font-size: 1.1em; }
+        .btn-main { background: #ffc107; color: black; padding: 15px; border-radius: 12px; font-weight: bold; width: 100%; border: none; cursor: pointer; }
         .driver-box { background: #2a2a2a; padding: 15px; margin: 12px 0; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid #ffc107; }
         .btn-call { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        #status-box { margin-top: 20px; padding: 15px; border-radius: 10px; background: #000; font-size: 0.9em; color: #aaa; border: 1px solid #333; }
-        input { width: 90%; padding: 12px; margin: 8px 0; background: #000; color: white; border: 1px solid #444; border-radius: 8px; text-align: center; }
+        input { width: 90%; padding: 12px; margin: 8px 0; background: #000; color: white; border: 1px solid #444; text-align: center; }
     </style>
 </head>
 <body>
 
     <div class="card">
-        <h2 style="color:#ffc107">ROASTERS SHOP</h2>
-        
+        <h2 style="color:#ffc107">SHOP DASHBOARD</h2>
         <div id="login-section">
-            <input type="text" id="sName" placeholder="ΟΝΟΜΑ ΜΑΓΑΖΙΟΥ">
+            <input type="text" id="sName" placeholder="ΜΑΓΑΖΙ">
             <input type="password" id="sPass" placeholder="ΚΩΔΙΚΟΣ">
             <button class="btn-main" onclick="doLogin()">ΕΙΣΟΔΟΣ</button>
         </div>
 
         <div id="shop-section" style="display:none;">
-            <div id="driver-list">
-                <p style="color:#666">Αναμονή για οδηγούς...</p>
-            </div>
-            <div id="status-box">Έτοιμο για κλήση</div>
-            <button onclick="localStorage.clear(); location.reload();" style="margin-top:20px; background:none; border:none; color:#444; text-decoration:underline; cursor:pointer;">Logout</button>
+            <div id="driver-list"><h4>ΟΔΗΓΟΙ ONLINE</h4></div>
+            <div id="status-box" style="margin-top:20px; color:#aaa;">Έτοιμο</div>
+            <br>
+            <button onclick="localStorage.clear(); location.reload();" style="color:#444; background:none; border:none; text-decoration:underline;">Logout</button>
         </div>
     </div>
 
@@ -40,59 +38,41 @@
         let shopData = null;
 
         function doLogin() {
-            shopData = { 
-                shop: document.getElementById('sName').value.trim(), 
-                password: document.getElementById('sPass').value.trim(), 
-                name: 'ΚΕΝΤΡΙΚΟ', 
-                isDriver: false 
-            };
+            shopData = { shop: document.getElementById('sName').value.trim(), password: document.getElementById('sPass').value.trim(), name: 'ΚΕΝΤΡΙΚΟ', isDriver: false };
+            if(shopData.password !== "1234") return alert("Λάθος!");
             localStorage.setItem('shop_auth', JSON.stringify(shopData));
-            socket.emit('login', shopData);
-            showUI();
-        }
-
-        function showUI() {
-            document.getElementById('login-section').style.display = 'none';
-            document.getElementById('shop-section').style.display = 'block';
+            location.reload();
         }
 
         socket.on('update-drivers-detailed', (drivers) => {
             const list = document.getElementById('driver-list');
-            list.innerHTML = "<h4>ONLINE ΟΔΗΓΟΙ</h4>";
-            if(drivers.length === 0) list.innerHTML += "<p style='color:#555'>Κανένας διαθέσιμος</p>";
-            
+            list.innerHTML = "<h4>ΟΔΗΓΟΙ ONLINE</h4>";
             drivers.forEach(d => {
-                list.innerHTML += `
-                    <div class="driver-box">
-                        <span>🛵 <b>${d.name}</b></span>
-                        <button class="btn-call" onclick="callDriver('${d.id}', '${d.name}')">ΚΛΗΣΗ</button>
-                    </div>`;
+                list.innerHTML += `<div class="driver-box"><span>🛵 <b>${d.name}</b></span><button class="btn-call" onclick="callDriver('${d.id}', '${d.name}')">ΚΛΗΣΗ</button></div>`;
             });
         });
 
         function callDriver(id, name) {
             socket.emit('new-order', { shopName: shopData.shop, targetDriverId: id });
-            const box = document.getElementById('status-box');
-            box.innerText = `📡 Κλήση στον ${name}...`;
-            box.style.background = "#1a1a00";
-            box.style.color = "#ffc107";
+            document.getElementById('status-box').innerText = `📡 Καλείται ο ${name}...`;
         }
 
         socket.on('order-confirmed', (data) => {
-            const box = document.getElementById('status-box');
-            box.innerText = `✅ Ο ${data.driverName} ΑΠΟΔΕΧΤΗΚΕ!`;
-            box.style.background = "#002b00";
-            box.style.color = "#28a745";
+            document.getElementById('status-box').innerText = `✅ Ο ${data.driverName} ΑΠΟΔΕΧΤΗΚΕ!`;
+            document.getElementById('status-box').style.color = "#28a745";
         });
 
         window.onload = () => {
             const saved = localStorage.getItem('shop_auth');
             if(saved) {
                 shopData = JSON.parse(saved);
+                document.getElementById('login-section').style.display = 'none';
+                document.getElementById('shop-section').style.display = 'block';
                 socket.emit('login', shopData);
-                showUI();
             }
         };
+
+        if ('serviceWorker' in navigator) navigator.serviceWorker.register('/pwabuilder-sw.js');
     </script>
 </body>
 </html>

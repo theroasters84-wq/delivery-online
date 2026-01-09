@@ -6,70 +6,50 @@ const path = require('path');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-    pingInterval: 10000, // Στέλνει σήμα κάθε 10 δευτ.
-    pingTimeout: 5000,   // Αν δεν πάρει απάντηση σε 5 δευτ., θεωρεί ότι χάθηκε
-    connectTimeout: 10000
+    cors: { origin: "*" }
 });
 
+// 1. Ρύθμιση για να αναγνωρίζει ο server τα αρχεία μέσα στον φάκελο public
 app.use(express.static(path.join(__dirname, 'public')));
 
-let shops = {}; 
+// 2. Συγκεκριμένα Routes για τα αρχεία του Driver (για σιγουριά)
+app.get('/driver', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'driver.html'));
+});
 
+app.get('/driver.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'driver.html'));
+});
+
+// 3. Σύνδεση Socket.io
 io.on('connection', (socket) => {
-    
-    socket.on('join-shop', (shopName) => {
-        const room = shopName.toLowerCase().trim();
-        socket.join(room);
-        if (!shops[room]) shops[room] = {};
-        io.to(room).emit('update-drivers', shops[room]);
+    console.log('Ένας χρήστης συνδέθηκε:', socket.id);
+
+    // Όταν συνδέεται ο οδηγός
+    socket.on('driver-login', (data) => {
+        socket.join(data.shop);
+        console.log(`Ο οδηγός ${data.name} συνδέθηκε στο κατάστημα: ${data.shop}`);
     });
 
-    socket.on('driver-login', ({ name, shop }) => {
-        const room = shop.toLowerCase().trim();
-        socket.join(room);
-        socket.myShop = room;
-        socket.myName = name;
-        
-        if (!shops[room]) shops[room] = {};
-        
-        // Καθαρισμός παλιών συνδέσεων με το ίδιο όνομα
-        Object.keys(shops[room]).forEach(id => {
-            if(shops[room][id] === name) delete shops[room][id];
-        });
-        
-        shops[room][socket.id] = name;
-        io.to(room).emit('update-drivers', shops[room]);
+    // Όταν το κατάστημα στέλνει παραγγελία
+    socket.on('new-order', (data) => {
+        // Η παραγγελία πάει σε όλους τους οδηγούς του συγκεκριμένου καταστήματος
+        io.to(data.shop).emit('new-order', data);
     });
 
-    // Heartbeat: Ο οδηγός επιβεβαιώνει ότι είναι ζωντανός
-    socket.on('heartbeat', (data) => {
-        const room = data.shop.toLowerCase().trim();
-        if (shops[room]) {
-            shops[room][socket.id] = data.name;
-        }
-    });
-
-    socket.on('call-driver', (data) => {
-        const room = data.shop.toLowerCase().trim();
-        if (data.driverId) {
-            io.to(data.driverId).emit('new-order');
-        } else {
-            io.to(room).emit('new-order');
-        }
-    });
-
+    // Όταν ο οδηγός αποδέχεται την παραγγελία
     socket.on('order-accepted', (data) => {
-        const room = data.shopName.toLowerCase().trim();
-        io.to(room).emit('driver-accepted', { driverName: data.driverName });
+        console.log(`Η παραγγελία έγινε δεκτή από: ${data.driverName}`);
+        io.emit('order-confirmed', data);
     });
 
     socket.on('disconnect', () => {
-        if (socket.myShop && shops[socket.myShop]) {
-            delete shops[socket.myShop][socket.id];
-            io.to(socket.myShop).emit('update-drivers', shops[socket.myShop]);
-        }
+        console.log('Ένας χρήστης αποσυνδέθηκε');
     });
 });
 
+// 4. Εκκίνηση του Server
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server running`));
+server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});

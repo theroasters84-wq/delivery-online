@@ -5,10 +5,11 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
+// Μειώνουμε τα timeouts στο ελάχιστο για να είναι "στην τσίτα" ο server
 const io = new Server(server, { 
     cors: { origin: "*" },
-    pingTimeout: 30000, 
-    pingInterval: 10000 
+    pingTimeout: 10000, 
+    pingInterval: 5000 
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -24,18 +25,12 @@ io.on('connection', (socket) => {
         socket.join(room);
         socket.shopName = room;
         socket.driverName = data.name;
-
-        // Στέλνουμε επιβεβαίωση στο Shop
         io.to(room).emit('driver-status', { name: data.name, status: 'online', socketId: socket.id });
+    });
 
-        // ΑΟΡΑΤΟ ΣΗΜΑ (Silent Ping) από τον Server προς τον Driver κάθε 15 δευτερόλεπτα
-        const keepAliveInterval = setInterval(() => {
-            if (socket.connected) {
-                socket.emit('silent-keep-alive');
-            } else {
-                clearInterval(keepAliveInterval);
-            }
-        }, 15000);
+    // Δυνατό "Σκουίρτ" επικοινωνίας - Ο οδηγός ζητάει επιβεβαίωση ζωής
+    socket.on('force-alive', (data) => {
+        socket.emit('alive-confirm', { time: new Date().getTime() });
     });
 
     socket.on('send-private-order', (data) => {
@@ -55,4 +50,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server with Keep-Alive running`));
+server.listen(PORT, () => console.log(`Super-Active Server Running`));

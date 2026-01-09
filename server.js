@@ -5,43 +5,57 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-    cors: { origin: "*" }
-});
+const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-io.on('connection', (socket) => {
-    console.log('--- Νέα σύνδεση:', socket.id);
+let onlineDrivers = {}; 
 
-    // Σύνδεση στο δωμάτιο (χρησιμοποιείται από Driver ΚΑΙ Shop)
-    socket.on('driver-login', (data) => {
-        if(!data.shop) return;
+io.on('connection', (socket) => {
+    socket.on('login', (data) => {
+        // Έλεγχος Κωδικού 1234
+        if(data.password !== "1234") {
+            socket.emit('auth-error', 'Λάθος Κωδικός!');
+            return;
+        }
+
         const room = data.shop.toLowerCase().trim();
         socket.join(room);
-        console.log(`[LOGIN] Ο χρήστης ${data.name} μπήκε στο δωμάτιο: ${room}`);
+        socket.shop = room;
+        socket.userName = data.name;
+        socket.isDriver = data.isDriver;
+
+        if (socket.isDriver) {
+            if (!onlineDrivers[room]) onlineDrivers[room] = [];
+            if (!onlineDrivers[room].includes(data.name)) {
+                onlineDrivers[room].push(data.name);
+            }
+            io.to(room).emit('update-drivers', onlineDrivers[room]);
+        }
+        console.log(`[LOGIN] ${data.name} στο κατάστημα ${room}`);
     });
 
-    // Λήψη παραγγελίας από το Shop
     socket.on('new-order', (data) => {
         const room = data.shopName.toLowerCase().trim();
-        console.log(`[ORDER] Νέα παραγγελία για το μαγαζί: ${room}`);
-        // Στέλνουμε σε ΟΛΟΥΣ στο δωμάτιο (συμπεριλαμβανομένων των οδηγών)
         io.to(room).emit('new-order', data);
     });
 
-    // Λήψη αποδοχής από τον Οδηγό
     socket.on('order-accepted', (data) => {
         const room = data.shopName.toLowerCase().trim();
-        console.log(`[ACCEPT] Ο οδηγός ${data.driverName} αποδέχτηκε στο δωμάτιο: ${room}`);
-        // Στέλνουμε την επιβεβαίωση πίσω στο Shop
         io.to(room).emit('order-confirmed', data);
     });
 
+    socket.on('heartbeat', () => {
+        // Κρατάει τη σύνδεση ενεργή
+    });
+
     socket.on('disconnect', () => {
-        console.log('--- Χρήστης αποσυνδέθηκε');
+        if (socket.shop && socket.isDriver) {
+            onlineDrivers[socket.shop] = onlineDrivers[socket.shop]?.filter(d => d !== socket.userName);
+            io.to(socket.shop).emit('update-drivers', onlineDrivers[socket.shop] || []);
+        }
     });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

@@ -1,100 +1,19 @@
-<!DOCTYPE html>
-<html lang="el">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <link rel="manifest" href="/manifest-shop.json">
-    <title>Driver App</title>
-    <style>
-        body { background: #000; color: white; font-family: sans-serif; text-align: center; margin: 0; display: flex; flex-direction: column; justify-content: center; height: 100vh; overflow: hidden; }
-        .card { background: #1a1a1a; padding: 25px; border-radius: 20px; margin: 20px; border: 1px solid #333; }
-        .btn { background: #ffc107; color: #000; padding: 20px; border-radius: 15px; font-weight: bold; border: none; width: 100%; font-size: 1.3em; cursor: pointer; }
-        input { width: 100%; padding: 15px; margin-bottom: 10px; border-radius: 10px; border: none; background: #333; color: white; font-size: 1.1em; }
-        #accept-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #ff0000; display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 10000; animation: blink 0.5s infinite; }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
-    </style>
-</head>
-<body>
+// Βρες τη συνάρτηση login() μέσα στο driver.html και αντικατάστησέ την:
 
-    <div id="login-ui" class="card">
-        <h2 style="color: #ffc107;">Σύνδεση Οδηγού</h2>
-        <input type="text" id="shop" placeholder="Όνομα Μαγαζιού">
-        <input type="text" id="name" placeholder="Το Όνομά σου">
-        <button class="btn" style="background:#28a745; color:white;" onclick="login()">ONLINE</button>
-    </div>
+function login() {
+    const s = document.getElementById('shop').value.toLowerCase().trim();
+    const n = document.getElementById('name').value.trim();
+    const p = prompt("Δώσε τον κωδικό πρόσβασης:"); // Ζητάει κωδικό με παράθυρο
 
-    <div id="active-ui" style="display:none;">
-        <h1 id="shop-title" style="color:#ffc107; font-size: 2.5em;"></h1>
-        <div style="font-size: 1.5em; color:#00ff00; margin: 20px;">● ΕΙΣΑΙ ONLINE</div>
-        <p id="driver-name-display" style="font-size: 1.2em; color: #888;"></p>
-        <p style="margin-top: 50px;">Περίμενε παραγγελία...</p>
-        <button onclick="logout()" style="background:none; border:none; color:red; text-decoration:underline; margin-top:30px;">Αποσύνδεση</button>
-    </div>
+    if (p !== "1234") {
+        alert("Λάθος κωδικός! Δεν μπορείς να συνδεθείς.");
+        return;
+    }
 
-    <div id="accept-layer" onclick="handleAccept()">
-        <h1 style="font-size: 4em; margin: 0;">ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ</h1>
-        <p style="font-size: 1.5em;">ΠΑΤΑ ΟΠΟΥΔΗΠΟΤΕ ΓΙΑ ΑΠΟΔΟΧΗ</p>
-    </div>
-
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        const socket = io();
-        // Χρησιμοποιούμε έναν πιο "ενοχλητικό" ήχο σειρήνας
-        const alarm = new Audio('https://noproblo.day/static/alarm.mp3'); 
-        alarm.loop = true;
-
-        // Wake Lock για να μην σβήνει η οθόνη
-        let wakeLock = null;
-        async function requestWakeLock() {
-            try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
-        }
-
-        if(localStorage.getItem('is_logged_in')) start();
-
-        function login() {
-            const s = document.getElementById('shop').value.toLowerCase().trim();
-            const n = document.getElementById('name').value.trim();
-            if(!s || !n) return alert("Βάλε στοιχεία!");
-            localStorage.setItem('saved_shop', s);
-            localStorage.setItem('saved_name', n);
-            localStorage.setItem('is_logged_in', 'true');
-            start();
-        }
-
-        function start() {
-            document.getElementById('login-ui').style.display = 'none';
-            document.getElementById('active-ui').style.display = 'block';
-            const shop = localStorage.getItem('saved_shop');
-            const name = localStorage.getItem('saved_name');
-            document.getElementById('shop-title').innerText = shop.toUpperCase();
-            document.getElementById('driver-name-display').innerText = name;
-            
-            socket.emit('driver-login', { name, shop });
-            requestWakeLock(); // Κράτα την οθόνη ανοιχτή
-        }
-
-        socket.on('new-order', () => {
-            document.getElementById('accept-layer').style.display = 'flex';
-            alarm.play().catch(() => {
-                // Αν ο browser μπλοκάρει τον ήχο, τον ξεκινάμε με το πρώτο άγγιγμα στην οθόνη
-                document.addEventListener('click', () => alarm.play(), {once: true});
-            });
-            if (navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 500]);
-        });
-
-        function handleAccept() {
-            alarm.pause();
-            alarm.currentTime = 0;
-            socket.emit('order-accepted', { 
-                driverName: localStorage.getItem('saved_name'),
-                shopName: localStorage.getItem('saved_shop')
-            });
-            document.getElementById('accept-layer').style.display = 'none';
-        }
-
-        function logout() { localStorage.clear(); location.reload(); }
-    </script>
-</body>
-</html>
+    if(!s || !n) return alert("Συμπλήρωσε τα στοιχεία!");
+    
+    localStorage.setItem('saved_shop', s);
+    localStorage.setItem('saved_name', n);
+    localStorage.setItem('is_logged_in', 'true');
+    start();
+}

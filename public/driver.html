@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Driver App</title>
+    <title>Roasters Driver</title>
     <link rel="manifest" href="/manifest-driver.json">
     <style>
         body { background: #000; color: white; font-family: sans-serif; text-align: center; margin: 0; display: flex; flex-direction: column; justify-content: center; height: 100vh; overflow: hidden; }
@@ -15,55 +15,64 @@
         @keyframes pulse { 50% { opacity: 0.2; } }
         #order-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f00; display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; animation: flash 0.5s infinite; }
         @keyframes flash { 50% { background: #600; } }
+        .logout-btn { margin-top: 30px; background: none; border: 1px solid #333; color: #555; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <div id="unlock-screen">
         <h2 style="color:#ffc107">ROASTERS DRIVER</h2>
-        <p>Πάτα για ενεργοποίηση ήχου & παραγγελιών</p>
+        <p>Πάτα για σύνδεση & παραμονή στο παρασκήνιο</p>
         <button class="btn" onclick="initApp()">ΕΝΕΡΓΟΠΟΙΗΣΗ</button>
     </div>
 
     <div id="login-ui">
-        <h2>ΕΙΣΟΔΟΣ ΟΔΗΓΟΥ</h2>
+        <h2>LOGIN</h2>
         <input type="text" id="shop" placeholder="ΜΑΓΑΖΙ">
         <input type="password" id="pass" placeholder="ΚΩΔΙΚΟΣ">
-        <input type="text" id="name" placeholder="ΤΟ ΟΝΟΜΑ ΣΟΥ">
+        <input type="text" id="name" placeholder="ΟΝΟΜΑ">
         <br><br>
         <button class="btn" onclick="login()">ΣΥΝΔΕΣΗ</button>
     </div>
 
     <div id="active-ui">
         <h1 id="user-display"></h1>
-        <p><span class="dot">●</span> ONLINE</p>
-        <button onclick="logout()" style="color:#444; background:none; border:none; text-decoration:underline;">Logout</button>
+        <p><span class="dot">●</span> ONLINE & ΠΡΟΣΤΑΤΕΥΜΕΝΟ</p>
+        <p style="font-size:0.8em; color:#444;">Το "Bot" κρατάει την εφαρμογή ξύπνια...</p>
+        <button class="logout-btn" onclick="logout()">LOGOUT (ΑΠΟΣΥΝΔΕΣΗ)</button>
     </div>
 
     <div id="order-layer" onclick="acceptOrder()">
-        <h1 style="font-size:3.5em;">NEA ΠΑΡΑΓΓΕΛΙΑ!</h1>
+        <h1 style="font-size:3em;">NEA ΠΑΡΑΓΓΕΛΙΑ!</h1>
         <p>ΠΑΤΑ ΓΙΑ ΑΠΟΔΟΧΗ</p>
     </div>
 
-    <video id="noSleepVideo" loop playsinline muted style="display:none;">
-        <source src="https://raw.githubusercontent.com/anars/blank-audio/master/250-milliseconds-of-silence.mp3" type="audio/mp3">
-    </video>
+    <audio id="bgBot" loop>
+        <source src="https://raw.githubusercontent.com/anars/blank-audio/master/10-seconds-of-silence.mp3" type="audio/mp3">
+    </audio>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io();
-        // Εδώ χρησιμοποιούμε το δικό σου mp3 αρχείο
+        const socket = io({ reconnection: true, reconnectionDelay: 500 });
         const alarm = new Audio('/sounds/alert.mp3');
-        const video = document.getElementById('noSleepVideo');
+        const bgBot = document.getElementById('bgBot');
 
         async function initApp() {
-            alarm.play().then(() => {
-                alarm.pause();
+            // Ενεργοποιούμε τον "σιωπηλό" ήχο και τον συναγερμό
+            try {
+                await alarm.play(); alarm.pause();
+                await bgBot.play(); // Ξεκινάει το Bot παρασκηνίου
                 document.getElementById('unlock-screen').style.display = 'none';
-                video.play();
-                if ('wakeLock' in navigator) navigator.wakeLock.request('screen').catch(()=>{});
+                
+                // Wake Lock API (για Android κυρίως)
+                if ('wakeLock' in navigator) {
+                    navigator.wakeLock.request('screen').catch(()=>{});
+                }
+                
                 checkAuth();
-            }).catch(() => alert("Ξαναπάτα το κουμπί!"));
+            } catch (err) {
+                alert("Πάτα ξανά το κουμπί για έγκριση ήχου!");
+            }
         }
 
         function checkAuth() {
@@ -78,7 +87,12 @@
         }
 
         function login() {
-            const data = { shop: document.getElementById('shop').value.trim(), name: document.getElementById('name').value.trim(), password: document.getElementById('pass').value.trim(), isDriver: true };
+            const data = { 
+                shop: document.getElementById('shop').value.trim().toLowerCase(), 
+                name: document.getElementById('name').value.trim(), 
+                password: document.getElementById('pass').value.trim(), 
+                isDriver: true 
+            };
             if(data.password !== "1234") return alert("Λάθος κωδικός!");
             localStorage.setItem('driver_auth', JSON.stringify(data));
             socket.emit('login', data);
@@ -89,6 +103,13 @@
             document.getElementById('login-ui').style.display = 'none';
             document.getElementById('active-ui').style.display = 'block';
             document.getElementById('user-display').innerText = name.toUpperCase();
+        }
+
+        function logout() {
+            if(confirm("Θέλεις να βγεις από τη βάρδια;")) {
+                localStorage.clear();
+                location.reload();
+            }
         }
 
         socket.on('new-order', () => {
@@ -105,9 +126,10 @@
             socket.emit('order-accepted', { driverName: auth.name, shopName: auth.shop });
         }
 
-        function logout() { localStorage.clear(); location.reload(); }
-
-        setInterval(() => { socket.emit('heartbeat'); }, 5000);
+        // Heartbeat σήμα στον server κάθε 5 δευτερόλεπτα
+        setInterval(() => {
+            if(socket.connected) socket.emit('heartbeat');
+        }, 5000);
 
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/pwabuilder-sw.js');

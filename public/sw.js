@@ -1,14 +1,29 @@
-const CACHE_NAME = 'roasters-cache-v1';
+const CACHE_NAME = 'roasters-v2';
+
+// Τα αρχεία που αποθηκεύονται για να δουλεύει η εφαρμογή "offline"
+const assets = [
+  '/driver.html',
+  '/driver.webmanifest',
+  'https://img.icons8.com/color/512/motorcycle.png'
+];
 
 self.addEventListener('install', (event) => {
-    self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(assets);
+    })
+  );
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-    event.waitUntil(clients.claim());
+  event.waitUntil(clients.claim());
 });
 
 self.addEventListener('fetch', (event) => {
-    // Απλή μεταφορά αιτημάτων για να δουλεύει το PWA
-    event.respondWith(fetch(event.request));
+  event.respondWith(
+    fetch(event.request).catch(() => {
+      return caches.match(event.request);
+    })
+  );
 });

@@ -1,17 +1,15 @@
 {
-  "name": "Roasters Driver",
+  "name": "Roasters Driver App",
   "short_name": "Driver",
   "start_url": "/driver.html",
   "display": "standalone",
   "background_color": "#000000",
-  "theme_color": "#000000",
-  "orientation": "portrait",
+  "theme_color": "#ffc107",
   "icons": [
     {
       "src": "https://img.icons8.com/color/512/motorcycle.png",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
+      "type": "image/png"
     }
   ]
 }

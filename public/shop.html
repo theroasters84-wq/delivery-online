@@ -2,92 +2,51 @@
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shop Admin - 1234</title>
+    <title>Shop</title>
     <style>
-        body { font-family: sans-serif; background: #f4f4f4; padding: 20px; text-align: center; }
-        .container { max-width: 500px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #ccc; font-size: 1em; }
-        .btn-connect { width: 100%; padding: 12px; background: #333; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        .driver-item { background: #fff; border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .btn-send { background: #28a745; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        #admin-panel { display: none; margin-top: 20px; }
+        body { font-family: sans-serif; text-align: center; padding: 20px; background: #eee; }
+        .driver-card { background: white; padding: 15px; margin: 10px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .btn-send { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
+    <h1>🏪 Διαχείριση Shop</h1>
+    <input type="text" id="shopName" placeholder="Όνομα Μαγαζιού" style="padding:10px;">
+    <button onclick="connect()" style="padding:10px;">Σύνδεση</button>
 
-<div class="container">
-    <div id="login-section">
-        <h2>🏪 Είσοδος Καταστήματος</h2>
-        <input type="text" id="shopName" placeholder="Όνομα Μαγαζιού">
-        <input type="password" id="shopPass" placeholder="Κωδικός (π.χ. 1234)">
-        <button class="btn-connect" onclick="connectShop()">ΕΙΣΟΔΟΣ</button>
-    </div>
+    <div id="list" style="max-width: 400px; margin: 20px auto;"></div>
 
-    <div id="admin-panel">
-        <h3 id="display-shop-name"></h3>
-        <hr>
-        <h4>Οδηγοί Online:</h4>
-        <ul id="driverList" style="list-style: none; padding: 0;">
-            <li id="no-drivers" style="color: #888;">Αναμονή για οδηγούς...</li>
-        </ul>
-        <button onclick="location.reload()" style="background:none; border:none; color:red; cursor:pointer;">Αποσύνδεση</button>
-    </div>
-</div>
-
-<script src="/socket.io/socket.io.js"></script>
-<script>
-    const socket = io();
-    const driverListUI = document.getElementById('driverList');
-
-    function connectShop() {
-        const shop = document.getElementById('shopName').value.toLowerCase().trim();
-        const pass = document.getElementById('shopPass').value;
-
-        if (pass !== "1234") {
-            alert("Λάθος κωδικός!");
-            return;
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        function connect() {
+            const s = document.getElementById('shopName').value.toLowerCase();
+            socket.emit('shop-login', { shop: s });
+            document.getElementById('shopName').disabled = true;
         }
 
-        if (!shop) return alert("Βάλε όνομα μαγαζιού!");
+        socket.on('driver-status', (data) => {
+            if(data.status === 'online') {
+                const div = document.createElement('div');
+                div.id = data.socketId;
+                div.className = 'driver-card';
+                div.innerHTML = `<span>🛵 ${data.name}</span> <button class="btn-send" onclick="send('${data.socketId}', '${data.name}')">ΑΠΟΣΤΟΛΗ</button>`;
+                document.getElementById('list').appendChild(div);
+            } else {
+                const el = document.getElementById(data.socketId);
+                if(el) el.remove();
+            }
+        });
 
-        socket.emit('shop-login', { shop: shop });
-        
-        document.getElementById('login-section').style.display = 'none';
-        document.getElementById('admin-panel').style.display = 'block';
-        document.getElementById('display-shop-name').innerText = "Κατάστημα: " + shop.toUpperCase();
-    }
-
-    socket.on('driver-status', (data) => {
-        if (data.status === 'online') {
-            const noDrivers = document.getElementById('no-drivers');
-            if (noDrivers) noDrivers.remove();
-            
-            if (document.getElementById(`driver-${data.name}`)) return;
-
-            const li = document.createElement('li');
-            li.id = `driver-${data.name}`;
-            li.className = 'driver-item';
-            li.innerHTML = `
-                <strong>🛵 ${data.name}</strong>
-                <button class="btn-send" onclick="sendToSpecific('${data.socketId}', '${data.name}')">ΑΠΟΣΤΟΛΗ</button>
-            `;
-            driverListUI.appendChild(li);
-        } else {
-            const el = document.getElementById(`driver-${data.name}`);
-            if (el) el.remove();
+        function send(id, name) {
+            const s = document.getElementById('shopName').value.toLowerCase();
+            socket.emit('send-private-order', { targetId: id, shop: s });
+            console.log("Στάλθηκε στον " + name);
         }
-    });
 
-    function sendToSpecific(targetId, driverName) {
-        const shop = document.getElementById('display-shop-name').innerText.replace("Κατάστημα: ", "").toLowerCase();
-        socket.emit('send-private-order', { targetId, shop, driverName });
-        alert("Η παραγγελία στάλθηκε στον " + driverName);
-    }
-
-    socket.on('order-confirmed', (data) => {
-        alert("✅ Ο οδηγός " + data.driverName + " την έλαβε!");
-    });
-</script>
+        socket.on('order-confirmed', (data) => {
+            alert("✅ Ο οδηγός " + data.driverName + " την δέχτηκε!");
+        });
+    </script>
 </body>
 </html>

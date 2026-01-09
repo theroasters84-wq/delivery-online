@@ -1,15 +1,25 @@
 {
+  "lang": "el",
   "name": "Roasters Driver App",
   "short_name": "Driver",
-  "start_url": "/driver.html",
+  "description": "Εφαρμογή διαχείρισης παραγγελιών για οδηγούς",
+  "start_url": "https://delivery-online.onrender.com/driver.html",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#000000",
   "theme_color": "#ffc107",
   "icons": [
     {
       "src": "https://img.icons8.com/color/512/motorcycle.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://img.icons8.com/color/192/motorcycle.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

@@ -4,95 +4,58 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Roasters Driver</title>
-    
     <link rel="manifest" href="/manifest-driver.json">
     <meta name="theme-color" content="#ffc107">
-    <link rel="apple-touch-icon" href="https://img.icons8.com/color/192/motorcycle.png">
 
     <style>
         body { 
-            background: #000; 
-            color: #fff; 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-            text-align: center; 
-            margin: 0; 
-            display: flex; 
-            flex-direction: column; 
-            justify-content: center; 
-            height: 100vh; 
-            overflow: hidden; 
-            -webkit-tap-highlight-color: transparent;
+            background: #000; color: #fff; font-family: sans-serif; 
+            text-align: center; margin: 0; display: flex; 
+            flex-direction: column; justify-content: center; height: 100vh; 
         }
         .btn { 
-            background: #ffc107; 
-            color: #000; 
-            padding: 20px; 
-            border-radius: 12px; 
-            font-weight: 900; 
-            font-size: 1.2em; 
-            border: none; 
-            width: 80%; 
-            cursor: pointer; 
-            text-transform: uppercase;
+            background: #ffc107; color: #000; padding: 20px; border-radius: 12px; 
+            font-weight: 900; font-size: 1.2em; border: none; width: 80%; cursor: pointer; 
         }
         input { 
-            width: 80%; 
-            padding: 15px; 
-            margin: 10px 0; 
-            border-radius: 10px; 
-            border: 2px solid #333; 
-            font-size: 1.1em; 
-            background: #111; 
-            color: #fff; 
-            text-align: center; 
+            width: 80%; padding: 15px; margin: 10px 0; border-radius: 10px; 
+            border: 2px solid #333; background: #111; color: #fff; text-align: center; 
         }
-        input:focus { border-color: #ffc107; outline: none; }
-        
         #active-ui { display: none; }
-        .status-dot { color: #0f0; font-size: 1.5em; vertical-align: middle; }
+        .status-dot { color: #0f0; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
         
-        /* Το στρώμα που αναβοσβήνει στην παραγγελία */
         #accept-layer { 
-            position: fixed; 
-            top: 0; left: 0; 
-            width: 100%; height: 100%; 
-            background: #ff0000; 
-            display: none; 
-            flex-direction: column; 
-            justify-content: center; 
-            align-items: center; 
-            z-index: 9999; 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: #ff0000; display: none; flex-direction: column; 
+            justify-content: center; align-items: center; z-index: 9999; 
             animation: blinker 0.5s linear infinite; 
         }
-        @keyframes blinker { 50% { opacity: 0.2; } }
-        
-        .order-title { font-size: 3em; font-weight: 900; margin: 0; color: white; }
-        .order-sub { font-size: 1.2em; color: white; margin-top: 20px; }
+        @keyframes blinker { 50% { opacity: 0.5; } }
+        .order-title { font-size: 3em; font-weight: 900; color: white; }
     </style>
 </head>
 <body>
 
     <div id="login-ui">
-        <img src="https://img.icons8.com/color/512/motorcycle.png" width="80" style="margin-bottom: 20px;">
+        <img src="https://img.icons8.com/color/512/motorcycle.png" width="80">
         <h2>DRIVER LOGIN</h2>
         <input type="text" id="shop" placeholder="ΟΝΟΜΑ ΜΑΓΑΖΙΟΥ">
         <input type="text" id="name" placeholder="ΤΟ ΟΝΟΜΑ ΣΟΥ">
-        <div style="margin-top: 20px;">
-            <button class="btn" onclick="connect()">ΕΝΑΡΞΗ ΒΑΡΔΙΑΣ</button>
-        </div>
+        <br><br>
+        <button class="btn" onclick="connect()">ΕΝΑΡΞΗ ΒΑΡΔΙΑΣ</button>
     </div>
 
     <div id="active-ui">
-        <h3 id="disp-shop" style="color:#ffc107; letter-spacing: 2px;"></h3>
-        <h1 id="disp-name" style="font-size: 2.5em; margin: 10px 0;"></h1>
+        <h3 id="disp-shop" style="color:#ffc107;"></h3>
+        <h1 id="disp-name"></h1>
         <p><span class="status-dot">●</span> ΕΙΣΑΙ ONLINE</p>
-        <p style="color: #666; font-size: 0.8em; margin-top: 40px;">Μην κλείνεις την εφαρμογή</p>
-        <button onclick="logout()" style="background:none; border:none; color:#ff4444; text-decoration:underline; cursor:pointer; margin-top:20px;">Logout</button>
+        <button onclick="logout()" style="background:none; border:none; color:#666; text-decoration:underline; margin-top:50px;">Logout</button>
     </div>
 
     <div id="accept-layer" onclick="acceptOrder()">
         <div class="order-title">NEA ΠΑΡΑΓΓΕΛΙΑ!</div>
-        <div class="order-sub">ΠΑΤΑ ΟΠΟΥΔΗΠΟΤΕ ΓΙΑ ΑΠΟΔΟΧΗ</div>
+        <p>ΠΑΤΑ ΓΙΑ ΑΠΟΔΟΧΗ</p>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -100,21 +63,27 @@
         const socket = io({ 
             transports: ['websocket'], 
             reconnection: true,
-            reconnectionAttempts: Infinity
+            reconnectionAttempts: Infinity,
+            timeout: 10000
         });
         
         const alarm = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
 
-        function connect() {
+        async function connect() {
             const s = document.getElementById('shop').value.toLowerCase().trim();
             const n = document.getElementById('name').value.trim();
-            if(!s || !n) return alert("Συμπλήρωσε τα στοιχεία σου!");
+            if(!s || !n) return alert("Συμπλήρωσε τα στοιχεία!");
 
             localStorage.setItem('shop', s);
             localStorage.setItem('name', n);
             
-            // "Ξεκλείδωμα" ήχου για κινητά
-            alarm.play().then(() => { alarm.pause(); alarm.currentTime = 0; }).catch(() => {});
+            // Ζητάμε άδεια για ειδοποιήσεις
+            if ("Notification" in window) {
+                await Notification.requestPermission();
+            }
+
+            // Ξεκλείδωμα ήχου
+            alarm.play().then(() => { alarm.pause(); }).catch(() => {});
             
             showActive();
         }
@@ -130,10 +99,24 @@
         }
 
         socket.on('new-order', () => {
+            // 1. Ήχος
             alarm.loop = true;
-            alarm.play().catch(e => console.log("Audio play failed"));
+            alarm.play().catch(e => console.log("Audio fail"));
+
+            // 2. Δόνηση
+            if(navigator.vibrate) navigator.vibrate([500, 300, 500, 300, 500]);
+
+            // 3. Native Notification (για κλειστή οθόνη)
+            if (Notification.permission === "granted") {
+                new Notification("NEA ΠΑΡΑΓΓΕΛΙΑ!", {
+                    body: "Άνοιξε την εφαρμογή για αποδοχή",
+                    icon: "https://img.icons8.com/color/192/motorcycle.png",
+                    tag: "order-alert"
+                });
+            }
+
+            // 4. Visual Layer
             document.getElementById('accept-layer').style.display = 'flex';
-            if(navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 500]);
         });
 
         function acceptOrder() {
@@ -151,12 +134,10 @@
             location.reload();
         }
 
-        // Auto-reconnect αν ανοίξει η εφαρμογή
         window.onload = () => {
             if(localStorage.getItem('shop')) showActive();
         };
 
-        // SERVICE WORKER ΕΓΓΡΑΦΗ ΓΙΑ ΤΟ PWABuilder
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/pwabuilder-sw.js');
         }

@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
-    <link rel="manifest" href="/public/driver.webmanifest">
+    <link rel="manifest" href="/driver.webmanifest">
     <meta name="theme-color" content="#000000">
 
     <title>Roasters Driver</title>
@@ -45,6 +45,7 @@
         }
         @keyframes flash { 0% { background: #ff0000; } 50% { background: #7a0000; } 100% { background: #ff0000; } }
         #status-box { margin: 25px 0; border: 2px solid #222; padding: 20px; border-radius: 20px; background: #0a0a0a; }
+        input { width: 100%; padding: 15px; margin-bottom: 10px; border-radius: 10px; border: none; background: #333; color: white; }
     </style>
 </head>
 <body>
@@ -61,10 +62,10 @@
     </div>
 
     <div class="card" id="login-ui" style="display:none;">
-        <input type="password" id="pw" placeholder="Κωδικός" style="width:100%; padding:15px; margin-bottom:10px; border-radius:10px; border:none;">
-        <input type="text" id="shop" placeholder="Μαγαζί" style="width:100%; padding:15px; margin-bottom:10px; border-radius:10px; border:none;">
-        <input type="text" id="name" placeholder="Το Όνομά σου" style="width:100%; padding:15px; margin-bottom:10px; border-radius:10px; border:none;">
-        <button class="btn-action" style="background:#28a745; color:white;" onclick="login()">ONLINE</button>
+        <input type="password" id="pw" placeholder="Κωδικός">
+        <input type="text" id="shop" placeholder="Μαγαζί">
+        <input type="text" id="name" placeholder="Το Όνομά σου">
+        <button class="btn-action" style="background:#28a745; color:white;" onclick="login()">ΣΥΝΔΕΣΗ</button>
     </div>
 
     <div id="active-ui" style="display:none;">
@@ -81,10 +82,10 @@
         const socket = io();
         const alarm = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
         
-        // ΠΡΟΣΟΧΗ: Προσθέσαμε το /public/ μπροστά
+        // Σωστό path για τον Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/public/sw.js').then(reg => reg.update());
+                navigator.serviceWorker.register('/sw.js').then(reg => reg.update());
             });
         }
 

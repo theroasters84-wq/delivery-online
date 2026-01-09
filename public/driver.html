@@ -3,109 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
     <link rel="manifest" href="/driver.webmanifest">
     <meta name="theme-color" content="#000000">
-
     <title>Roasters Driver</title>
     
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { 
-            background: #000; color: white; font-family: sans-serif; 
-            text-align: center; margin: 0; padding: 20px; height: 100vh; 
-            display: flex; flex-direction: column; justify-content: center; 
-            overflow: hidden; 
-        }
-        .card { 
-            background: #1a1a1a; padding: 30px; border-radius: 25px; 
-            border: 1px solid #333; box-shadow: 0 10px 40px rgba(0,0,0,0.8); 
-        }
-        #bot-overlay { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: #000; z-index: 99999; display: flex; 
-            flex-direction: column; align-items: center; justify-content: center; 
-            padding: 30px;
-        }
-        .btn-action { 
-            background: #ffc107; color: black; padding: 22px; width: 100%; 
-            border-radius: 18px; font-weight: 900; font-size: 1.4em; 
-            border: none; cursor: pointer; text-transform: uppercase; 
-            margin-bottom: 15px;
-        }
-        #accept-layer { 
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
-            background: #ff0000; color: white; display: none; 
-            flex-direction: column; justify-content: center; align-items: center; 
-            z-index: 10000; animation: flash 0.5s infinite; 
-        }
-        @keyframes flash { 0% { background: #ff0000; } 50% { background: #7a0000; } 100% { background: #ff0000; } }
-        #status-box { margin: 25px 0; border: 2px solid #222; padding: 20px; border-radius: 20px; background: #0a0a0a; }
+        body { background: #000; color: white; font-family: sans-serif; text-align: center; margin: 0; padding: 20px; height: 100vh; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+        .card { background: #1a1a1a; padding: 30px; border-radius: 25px; border: 1px solid #333; }
+        #bot-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .btn-action { background: #ffc107; color: black; padding: 22px; width: 100%; border-radius: 18px; font-weight: 900; font-size: 1.4em; border: none; cursor: pointer; margin-bottom: 15px; }
+        #accept-layer { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #ff0000; display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 10000; animation: flash 0.5s infinite; }
+        @keyframes flash { 0%, 100% { background: #ff0000; } 50% { background: #7a0000; } }
         input { width: 100%; padding: 15px; margin-bottom: 10px; border-radius: 10px; border: none; background: #333; color: white; }
     </style>
 </head>
 <body>
-
-    <div id="bot-overlay">
-        <img src="https://img.icons8.com/color/512/motorcycle.png" style="width:120px; margin-bottom:30px;">
-        <h1 style="margin-bottom:30px;">ROASTERS DRIVER</h1>
-        <button class="btn-action" onclick="unlock()">ΕΝΑΡΞΗ ΒΑΡΔΙΑΣ</button>
-    </div>
-
-    <div id="accept-layer" onclick="handleAccept()">
-        <h1 style="font-size: 5em; font-weight: 900; margin: 0;">ΕΡΧΟΜΑΙ!</h1>
-        <p style="font-size: 1.8em;">ΠΑΤΑ ΓΙΑ ΑΠΟΔΟΧΗ</p>
-    </div>
-
+    <div id="bot-overlay"><button class="btn-action" onclick="unlock()">ΕΝΑΡΞΗ ΒΑΡΔΙΑΣ</button></div>
+    <div id="accept-layer" onclick="handleAccept()"><h1>ΕΡΧΟΜΑΙ!</h1><p>ΠΑΤΑ ΓΙΑ ΑΠΟΔΟΧΗ</p></div>
     <div class="card" id="login-ui" style="display:none;">
-        <input type="password" id="pw" placeholder="Κωδικός">
-        <input type="text" id="shop" placeholder="Μαγαζί">
-        <input type="text" id="name" placeholder="Το Όνομά σου">
-        <button class="btn-action" style="background:#28a745; color:white;" onclick="login()">ΣΥΝΔΕΣΗ</button>
+        <input type="text" id="shop" placeholder="Μαγαζί"><input type="text" id="name" placeholder="Όνομα">
+        <button class="btn-action" style="background:#28a745; color:white;" onclick="login()">ONLINE</button>
     </div>
-
     <div id="active-ui" style="display:none;">
-        <h1 id="shop-title" style="color:#ffc107; margin:0;"></h1>
-        <div id="status-box">
-            <div style="font-size: 1.4em; font-weight:bold; color:#00ff00;">● ONLINE</div>
-            <div id="driver-name-display" style="color: #888; margin-top:8px;"></div>
-        </div>
-        <button onclick="logout()" style="color:#ff4757; background:none; border:none; text-decoration:underline;">Αποσύνδεση</button>
+        <h1 id="shop-title" style="color:#ffc107;"></h1>
+        <div style="font-size: 1.4em; color:#00ff00;">● ONLINE</div>
+        <p id="driver-name-display"></p>
+        <button onclick="logout()" style="color:#ff4757; background:none; border:none;">Αποσύνδεση</button>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
         const alarm = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
-        
-        // Σωστό path για τον Service Worker
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').then(reg => reg.update());
-            });
-        }
+        if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js'); }
 
         function unlock() {
             alarm.play().then(() => {
-                alarm.pause(); 
+                alarm.pause();
                 document.getElementById('bot-overlay').style.display = 'none';
                 if(localStorage.getItem('is_logged_in')) start();
                 else document.getElementById('login-ui').style.display = 'block';
             });
         }
-
         function login() {
             localStorage.setItem('saved_shop', document.getElementById('shop').value.toLowerCase().trim());
             localStorage.setItem('saved_name', document.getElementById('name').value.trim());
             localStorage.setItem('is_logged_in', 'true');
             start();
         }
-
-        async function start() {
+        function start() {
             document.getElementById('login-ui').style.display = 'none';
             document.getElementById('active-ui').style.display = 'block';
             const shop = localStorage.getItem('saved_shop');
@@ -113,23 +64,13 @@
             document.getElementById('shop-title').innerText = shop.toUpperCase();
             document.getElementById('driver-name-display').innerText = name;
             socket.emit('driver-login', { name: name, shop: shop });
-            if ('wakeLock' in navigator) { try { await navigator.wakeLock.request('screen'); } catch (e) {} }
         }
-
-        socket.on('new-order', () => {
-            alarm.loop = true; alarm.play();
-            document.getElementById('accept-layer').style.display = 'flex';
-        });
-
-        function handleAccept() {
+        socket.on('new-order', () => { alarm.loop = true; alarm.play(); document.getElementById('accept-layer').style.display = 'flex'; });
+        function handleAccept() { 
             alarm.pause(); 
-            socket.emit('order-accepted', { 
-                driverName: localStorage.getItem('saved_name'), 
-                shopName: localStorage.getItem('saved_shop') 
-            });
-            document.getElementById('accept-layer').style.display = 'none';
+            socket.emit('order-accepted', { driverName: localStorage.getItem('saved_name'), shopName: localStorage.getItem('saved_shop') });
+            document.getElementById('accept-layer').style.display = 'none'; 
         }
-
         function logout() { localStorage.clear(); location.reload(); }
     </script>
 </body>

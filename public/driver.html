@@ -70,7 +70,7 @@
         <input type="password" id="pw" placeholder="Κωδικός">
         <input type="text" id="shop" placeholder="Μαγαζί">
         <input type="text" id="name" placeholder="Το Όνομά σου">
-        <button class="btn-action" style="background:#28a745; color:white;" onclick="login()">ΣΥΝΔΕΣΗ</button>
+        <button class="btn-action" style="background:#28a745; color:white;" onclick="login()">ONLINE</button>
     </div>
 
     <div id="active-ui" style="display:none;">
@@ -86,12 +86,14 @@
     <script>
         const socket = io();
         const alarm = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
-        let wakeLock = null;
-
-        // Service Worker
+        
+        // Καταχώρηση Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').then(reg => reg.update());
+                navigator.serviceWorker.register('/sw.js').then(reg => {
+                    console.log('SW OK');
+                    reg.update();
+                });
             });
         }
 
@@ -122,7 +124,7 @@
             socket.emit('driver-login', { name: name, shop: shop });
 
             if ('wakeLock' in navigator) {
-                try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
+                try { await navigator.wakeLock.request('screen'); } catch (err) {}
             }
         }
 

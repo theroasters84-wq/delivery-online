@@ -5,42 +5,81 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
+const io = new Server(server, { 
+    cors: { origin: "*" } 
+});
 
-// 1. Σερβίρουμε ΟΛΟΥΣ τους πιθανούς φακέλους public
+// 1. Σερβίρισμα στατικών αρχείων από τον φάκελο public
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.static(path.join(__dirname, 'public/public')));
 
-// 2. Ειδικό Route που "παντρεύει" το driver.html με το manifest-shop.json
-app.get('/driver.html', (req, res) => {
-    // Ψάχνει το αρχείο σε όλες τις πιθανές διαδρομές της δομής σου
-    const locations = [
-        path.join(__dirname, 'public', 'driver.html'),
-        path.join(__dirname, 'public', 'public', 'driver.html')
-    ];
-    const found = locations.find(loc => require('fs').existsSync(loc));
-    res.sendFile(found || locations[0]);
+// 2. Routes για τα αρχεία (για να μην βγάζει 404 ο Chrome)
+app.get('/driver', (req, res) => res.sendFile(path.join(__dirname, 'public', 'driver.html')));
+app.get('/shop', (req, res) => res.sendFile(path.join(__dirname, 'public', 'shop.html')));
+app.get('/manifest-shop.json', (req, res) => res.sendFile(path.join(__dirname, 'public', 'manifest-shop.json')));
+app.get('/sw.js', (req, res) => {
+    res.setHeader('Content-Type', 'application/javascript');
+    res.sendFile(path.join(__dirname, 'public', 'sw.js'));
 });
 
-// 3. Διόρθωση για το Manifest (επειδή το λες manifest-shop.json)
-app.get('/manifest-shop.json', (req, res) => {
-    const locations = [
-        path.join(__dirname, 'public', 'manifest-shop.json'),
-        path.join(__dirname, 'public', 'public', 'manifest-shop.json')
-    ];
-    const found = locations.find(loc => require('fs').existsSync(loc));
-    res.sendFile(found || locations[0]);
-});
-
-// 4. Socket.io Logic
+// 3. Λογική Socket.io για την επικοινωνία
 io.on('connection', (socket) => {
-    socket.on('driver-login', (data) => {
-        socket.join(data.shop);
-        console.log(`Driver ${data.name} online @ ${data.shop}`);
+    console.log('Νέα σύνδεση:', socket.id);
+
+    // Σύνδεση Καταστήματος
+    socket.on('shop-login', (data) => {
+        const shopRoom = data.shop.toLowerCase().trim();
+        socket.join(shopRoom);
+        socket.isShop = true;
+        console.log(`Το κατάστημα ${shopRoom} είναι online.`);
     });
-    socket.on('new-order', (data) => io.to(data.shop).emit('new-order', data));
-    socket.on('order-accepted', (data) => io.emit('order-confirmed', data));
+
+    // Σύνδεση Οδηγού
+    socket.on('driver-login', (data) => {
+        const shopRoom = data.shop.toLowerCase().trim();
+        socket.join(shopRoom);
+        socket.shopName = shopRoom;
+        socket.driverName = data.name;
+        
+        console.log(`Ο οδηγός ${data.name} συνδέθηκε στο ${shopRoom}`);
+
+        // Ενημέρωση του καταστήματος ότι ο οδηγός μπήκε
+        io.to(shopRoom).emit('driver-status', { 
+            name: data.name, 
+            status: 'online' 
+        });
+    });
+
+    // Αποστολή Παραγγελίας (Από Shop -> Οδηγούς)
+    socket.on('new-order', (data) => {
+        const shopRoom = data.shop.toLowerCase().trim();
+        console.log(`Νέα παραγγελία για το κατάστημα: ${shopRoom}`);
+        // Στέλνουμε σε όλους στο δωμάτιο (οι οδηγοί θα την ακούσουν)
+        io.to(shopRoom).emit('new-order', data);
+    });
+
+    // Αποδοχή Παραγγελίας (Από Οδηγό -> Shop)
+    socket.on('order-accepted', (data) => {
+        const shopRoom = data.shopName ? data.shopName.toLowerCase().trim() : socket.shopName;
+        console.log(`Η παραγγελία έγινε δεκτή από: ${data.driverName}`);
+        
+        // Ενημερώνουμε το κατάστημα ότι ο συγκεκριμένος οδηγός την πήρε
+        io.to(shopRoom).emit('order-confirmed', { 
+            driverName: data.driverName 
+        });
+    });
+
+    socket.on('disconnect', () => {
+        if (socket.driverName && socket.shopName) {
+            io.to(socket.shopName).emit('driver-status', { 
+                name: socket.driverName, 
+                status: 'offline' 
+            });
+        }
+    });
 });
 
+// 4. Εκκίνηση Server
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log('Server is running!'));
+server.listen(PORT, () => {
+    console.log(`Server τρέχει στη θύρα ${PORT}`);
+});

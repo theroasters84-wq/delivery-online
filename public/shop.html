@@ -3,65 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="manifest" href="/manifest-shop.json">
-    <title>Shop Panel - The Roasters</title>
+    <title>Roasters Shop - Διαχείριση</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #f4f4f4; padding: 20px; }
-        .card { max-width: 450px; margin: auto; background: white; padding: 30px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        .driver-card { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f9f9f9; margin-bottom: 10px; border-radius: 15px; border: 1px solid #eee; }
-        .btn-call { background: #2ecc71; color: white; border: none; padding: 12px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; }
-        #status-display { margin-top: 20px; padding: 20px; background: #eee; border-radius: 15px; font-weight: bold; font-size: 1.2em; }
-        input { width: 90%; padding: 15px; margin-bottom: 10px; border-radius: 10px; border: 1px solid #ddd; }
-        .btn-logout { background: #ff4757; color: white; border: none; padding: 12px; width: 100%; border-radius: 10px; margin-top: 20px; cursor: pointer; font-weight: bold; }
+        body { font-family: sans-serif; background: #f4f4f4; margin: 0; padding: 20px; text-align: center; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        h1 { color: #333; }
+        .status-box { background: #eee; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        .driver-list { list-style: none; padding: 0; text-align: left; }
+        .driver-item { background: #e8f5e9; padding: 10px; margin: 5px 0; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid #4caf50; }
+        .btn-order { background: #ffc107; color: black; border: none; padding: 20px; width: 100%; border-radius: 10px; font-size: 1.2em; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn-order:active { transform: scale(0.98); background: #e0ac08; }
+        #logs { margin-top: 20px; font-size: 0.9em; color: #666; height: 100px; overflow-y: auto; border-top: 1px solid #ddd; padding-top: 10px; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <div id="setup">
-            <h2>🔐 Είσοδος Shop</h2>
-            <input type="password" id="pw" placeholder="Κωδικός">
-            <input type="text" id="shop-n" placeholder="Όνομα Μαγαζιού">
-            <button onclick="enter()" style="width:100%; padding:15px; background:#3498db; color:white; border:none; border-radius:10px; font-weight:bold;">ΕΙΣΟΔΟΣ</button>
-        </div>
-        <div id="main" style="display:none;">
-            <h1 id="title"></h1>
-            <div id="driver-list"></div>
-            <div id="status-display">ΕΤΟΙΜΟ</div>
-            <button class="btn-logout" onclick="logout()">❌ ΑΠΟΣΥΝΔΕΣΗ</button>
-        </div>
+
+<div class="container">
+    <h1>🏪 Roasters Shop</h1>
+    
+    <div class="status-box">
+        <input type="text" id="shopName" placeholder="Όνομα Καταστήματος (π.χ. roasters1)" style="width: 80%; padding: 10px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #ccc;">
+        <button onclick="connectShop()" style="padding: 10px 20px; background: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">Σύνδεση Καταστήματος</button>
     </div>
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        const socket = io();
-        const KEY = "1234";
-        if(localStorage.getItem('shop_room')) show();
-        function enter() {
-            if(document.getElementById('pw').value !== KEY) return alert("Λάθος κωδικός");
-            localStorage.setItem('shop_room', document.getElementById('shop-n').value.toLowerCase().trim());
-            location.reload();
+
+    <div class="status-box">
+        <h3>Οδηγοί Online:</h3>
+        <ul id="driverList" class="driver-list">
+            <li style="color: #888;">Κανένας οδηγός συνδεδεμένος...</li>
+        </ul>
+    </div>
+
+    <button class="btn-order" onclick="sendOrder()">🔔 ΑΠΟΣΤΟΛΗ ΠΑΡΑΓΓΕΛΙΑΣ</button>
+
+    <div id="logs"></div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = io();
+    const logs = document.getElementById('logs');
+    const driverListUI = document.getElementById('driverList');
+
+    function addLog(msg) {
+        const div = document.createElement('div');
+        div.innerText = `${new Date().toLocaleTimeString()}: ${msg}`;
+        logs.prepend(div);
+    }
+
+    function connectShop() {
+        const shop = document.getElementById('shopName').value.toLowerCase().trim();
+        if(!shop) return alert("Βάλε όνομα μαγαζιού!");
+        
+        socket.emit('shop-login', { shop: shop });
+        addLog(`Συνδέθηκες στο κανάλι: ${shop}`);
+        document.getElementById('shopName').disabled = true;
+    }
+
+    // Όταν ένας οδηγός μπαίνει στο σύστημα
+    socket.on('driver-status', (data) => {
+        addLog(`Ο οδηγός ${data.name} είναι ${data.status}`);
+        updateDriverList(data);
+    });
+
+    function updateDriverList(data) {
+        // Καθαρίζουμε το "Κανένας οδηγός" αν υπάρχει
+        if(driverListUI.innerText.includes("Κανένας")) driverListUI.innerHTML = "";
+        
+        // Έλεγχος αν υπάρχει ήδη στη λίστα
+        const existing = document.getElementById(`driver-${data.name}`);
+        if(!existing && data.status === 'online') {
+            const li = document.createElement('li');
+            li.id = `driver-${data.name}`;
+            li.className = 'driver-item';
+            li.innerHTML = `<span>🛵 ${data.name}</span> <span style="color: #4caf50; font-weight: bold;">● LIVE</span>`;
+            driverListUI.appendChild(li);
         }
-        function show() {
-            document.getElementById('setup').style.display = 'none';
-            document.getElementById('main').style.display = 'block';
-            const room = localStorage.getItem('shop_room');
-            document.getElementById('title').innerText = room.toUpperCase();
-            socket.emit('join-shop', room);
-        }
-        socket.on('update-drivers', (drivers) => {
-            const list = document.getElementById('driver-list');
-            list.innerHTML = "";
-            Object.keys(drivers).forEach(id => {
-                list.innerHTML += `<div class="driver-card"><span>👤 ${drivers[id]}</span><button class="btn-call" onclick="call('${id}')">ΚΛΗΣΗ</button></div>`;
-            });
+    }
+
+    function sendOrder() {
+        const shop = document.getElementById('shopName').value.toLowerCase().trim();
+        if(!shop) return alert("Συνδέσου πρώτα!");
+
+        socket.emit('new-order', { 
+            shop: shop,
+            time: new Date().toLocaleTimeString()
         });
-        function call(id) { socket.emit('call-driver', { driverId: id, shop: localStorage.getItem('shop_room') }); }
-        socket.on('driver-accepted', (data) => {
-            const sd = document.getElementById('status-display');
-            sd.innerText = "✅ " + data.driverName + " ΑΠΟΔΕΧΤΗΚΕ!";
-            sd.style.background = "#2ecc71"; sd.style.color = "white";
-            setTimeout(() => { sd.style.background = "#eee"; sd.style.color = "#333"; sd.innerText = "ΕΤΟΙΜΟ"; }, 5000);
-        });
-        function logout() { localStorage.clear(); location.reload(); }
-    </script>
+        addLog("Η ειδοποίηση στάλθηκε στους οδηγούς!");
+    }
+
+    // Όταν κάποιος οδηγός αποδέχεται
+    socket.on('order-confirmed', (data) => {
+        alert(`✅ Η παραγγελία έγινε δεκτή από τον ${data.driverName}!`);
+        addLog(`Αποδοχή από: ${data.driverName}`);
+    });
+</script>
+
 </body>
 </html>

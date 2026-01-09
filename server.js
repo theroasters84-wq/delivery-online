@@ -5,11 +5,10 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-// Μειώνουμε τα timeouts στο ελάχιστο για να είναι "στην τσίτα" ο server
 const io = new Server(server, { 
     cors: { origin: "*" },
-    pingTimeout: 10000, 
-    pingInterval: 5000 
+    pingTimeout: 60000, 
+    pingInterval: 10000 
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -26,11 +25,15 @@ io.on('connection', (socket) => {
         socket.shopName = room;
         socket.driverName = data.name;
         io.to(room).emit('driver-status', { name: data.name, status: 'online', socketId: socket.id });
-    });
 
-    // Δυνατό "Σκουίρτ" επικοινωνίας - Ο οδηγός ζητάει επιβεβαίωση ζωής
-    socket.on('force-alive', (data) => {
-        socket.emit('alive-confirm', { time: new Date().getTime() });
+        // ΜΟΝΙΜΟ "ΣΠΡΩΞΙΜΟ" ΔΕΔΟΜΕΝΩΝ (High Priority Ping)
+        const keepAlive = setInterval(() => {
+            if (socket.connected) {
+                socket.emit('data-pulse', { timestamp: Date.now() });
+            } else {
+                clearInterval(keepAlive);
+            }
+        }, 15000);
     });
 
     socket.on('send-private-order', (data) => {

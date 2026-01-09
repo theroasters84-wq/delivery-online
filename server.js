@@ -5,24 +5,32 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
+const io = new Server(server, { 
+    cors: { origin: "*" },
+    pingTimeout: 60000, 
+    pingInterval: 25000 
+});
 
 app.use(express.static(path.join(__dirname, 'public')));
 
 io.on('connection', (socket) => {
-    
+    console.log('Νέα σύνδεση:', socket.id);
+
+    // Είσοδος Καταστήματος
     socket.on('shop-login', (data) => {
-        socket.join(data.shop.toLowerCase());
-        console.log(`Shop connected: ${data.shop}`);
+        const shopRoom = data.shop.toLowerCase().trim();
+        socket.join(shopRoom);
+        console.log(`Το κατάστημα ${shopRoom} συνδέθηκε.`);
     });
 
+    // Είσοδος Οδηγού
     socket.on('driver-login', (data) => {
-        const shopRoom = data.shop.toLowerCase();
+        const shopRoom = data.shop.toLowerCase().trim();
         socket.join(shopRoom);
         socket.shopName = shopRoom;
         socket.driverName = data.name;
         
-        // Στέλνουμε στο Shop το socket.id για να ξέρει σε ποιον να απαντήσει
+        // Ενημερώνουμε το Shop για τον νέο οδηγό και στέλνουμε το Socket ID του
         io.to(shopRoom).emit('driver-status', { 
             name: data.name, 
             status: 'online',
@@ -30,11 +38,18 @@ io.on('connection', (socket) => {
         });
     });
 
+    // Λήψη Heartbeat (Ping από το κινητό)
+    socket.on('heartbeat', (data) => {
+        // Δεν χρειάζεται δράση, η λήψη και μόνο κρατάει τη σύνδεση ενεργή
+        console.log(`Heartbeat: ${data.name} @ ${data.shop}`);
+    });
+
+    // Ιδιωτική Αποστολή Παραγγελίας σε συγκεκριμένο Socket ID
     socket.on('send-private-order', (data) => {
-        // Στόχευση μόνο σε έναν οδηγό
         io.to(data.targetId).emit('new-order', { shop: data.shop });
     });
 
+    // Αποδοχή Παραγγελίας
     socket.on('order-accepted', (data) => {
         const shopRoom = data.shopName || socket.shopName;
         io.to(shopRoom).emit('order-confirmed', { driverName: data.driverName });

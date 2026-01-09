@@ -3,110 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roasters Shop - Dashboard</title>
+    <title>Shop Panel</title>
     <style>
-        body { background: #1a1a1a; color: #fff; font-family: sans-serif; text-align: center; margin: 0; padding: 20px; }
-        .container { max-width: 500px; margin: auto; background: #222; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        h1 { color: #ffc107; margin-bottom: 10px; }
-        input { width: 90%; padding: 15px; margin: 10px 0; border-radius: 8px; border: 1px solid #444; background: #000; color: #fff; font-size: 1.1em; text-align: center; }
-        .btn-send { background: #ffc107; color: #000; padding: 20px; border-radius: 12px; font-weight: 900; font-size: 1.3em; border: none; width: 100%; cursor: pointer; text-transform: uppercase; transition: 0.3s; }
-        .btn-send:active { transform: scale(0.98); background: #e0a800; }
-        #status { margin-top: 25px; padding: 20px; border-radius: 10px; min-height: 50px; font-weight: bold; }
-        .waiting { background: #333; color: #aaa; border: 1px dashed #555; }
-        .confirmed { background: #28a745; color: white; border: none; animation: pop 0.3s ease-out; }
-        @keyframes pop { 0% { transform: scale(0.8); } 100% { transform: scale(1); } }
-        .log-out { color: #666; font-size: 0.8em; cursor: pointer; margin-top: 20px; display: block; }
+        body { background: #1a1a1a; color: #fff; font-family: sans-serif; text-align: center; padding: 20px; }
+        .card { background: #222; padding: 20px; border-radius: 15px; max-width: 400px; margin: auto; }
+        .btn { background: #ffc107; color: #000; padding: 20px; border-radius: 12px; font-weight: 900; width: 100%; border: none; cursor: pointer; font-size: 1.2em; }
+        input { width: 90%; padding: 12px; margin: 10px 0; background: #000; color: #fff; border: 1px solid #444; text-align: center; }
+        #status { margin-top: 20px; padding: 15px; border-radius: 10px; background: #333; }
+        .online-list { color: #ffc107; font-weight: bold; margin: 10px 0; }
     </style>
 </head>
 <body>
 
-    <div class="container">
+    <div class="card">
         <h1>ROASTERS SHOP</h1>
-        
-        <div id="setup-ui">
-            <p>Πληκτρολόγησε το όνομα του μαγαζιού για να ξεκινήσεις:</p>
-            <input type="text" id="shopName" placeholder="π.χ. roasters">
-            <button class="btn-send" onclick="initShop()">ΕΙΣΟΔΟΣ</button>
+        <div id="setup">
+            <input type="text" id="sName" placeholder="ΜΑΓΑΖΙ">
+            <input type="password" id="sPass" placeholder="ΚΩΔΙΚΟΣ (1234)">
+            <button class="btn" onclick="save()">ΕΙΣΟΔΟΣ</button>
         </div>
 
-        <div id="main-ui" style="display:none;">
-            <p>Μαγαζί: <b id="active-shop" style="color:#ffc107;"></b></p>
-            <hr style="border: 0.5px solid #333;">
-            <br>
-            <button class="btn-send" onclick="sendOrder()">🚀 ΣΤΕΙΛΕ ΠΑΡΑΓΓΕΛΙΑ</button>
-            
-            <div id="status" class="waiting">
-                Αναμονή για παραγγελία...
-            </div>
-
-            <span class="log-out" onclick="logout()">Αλλαγή Μαγαζιού</span>
+        <div id="controls" style="display:none;">
+            <div class="online-list">Οδηγοί: <span id="list">-</span></div>
+            <button class="btn" onclick="send()">🚀 ΣΤΕΙΛΕ ΠΑΡΑΓΓΕΛΙΑ</button>
+            <div id="status">Αναμονή...</div>
         </div>
     </div>
-
-    <audio id="confirmsound" src="https://actions.google.com/sounds/v1/communication/notification_high_intensity.ogg"></audio>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        const confirmSound = document.getElementById('confirmsound');
-
-        function initShop() {
-            const name = document.getElementById('shopName').value.trim().toLowerCase();
-            if(!name) return alert("Βάλε όνομα μαγαζιού!");
-            localStorage.setItem('myShopName', name);
+        function save() {
+            const d = { shop: document.getElementById('sName').value, password: document.getElementById('sPass').value, name: 'SHOP', isDriver: false };
+            localStorage.setItem('shop_auth', JSON.stringify(d));
             location.reload();
         }
 
-        function checkAuth() {
-            const savedShop = localStorage.getItem('myShopName');
-            if(savedShop) {
-                document.getElementById('setup-ui').style.display = 'none';
-                document.getElementById('main-ui').style.display = 'block';
-                document.getElementById('active-shop').innerText = savedShop.toUpperCase();
-                
-                // Σύνδεση στο "δωμάτιο" του μαγαζιού
-                socket.emit('driver-login', { shop: savedShop, name: 'SHOP_MASTER' });
-            }
+        socket.on('update-drivers', (list) => { document.getElementById('list').innerText = list.length > 0 ? list.join(', ') : 'Κανένας'; });
+
+        function send() {
+            const auth = JSON.parse(localStorage.getItem('shop_auth'));
+            socket.emit('new-order', { shopName: auth.shop });
+            document.getElementById('status').innerText = "📡 Στάλθηκε! Περιμένουμε αποδοχή...";
+            document.getElementById('status').style.background = "#333";
         }
 
-        function sendOrder() {
-            const shop = localStorage.getItem('myShopName');
-            const statusDiv = document.getElementById('status');
-            
-            // Επαναφορά status
-            statusDiv.className = 'waiting';
-            statusDiv.innerHTML = "📡 Η παραγγελία στάλθηκε!<br>Περιμένουμε τον οδηγό...";
-
-            // Αποστολή σήματος στον Server
-            socket.emit('new-order', {
-                shopName: shop,
-                time: new Date().toLocaleTimeString()
-            });
-        }
-
-        // Λήψη επιβεβαίωσης από τον οδηγό
         socket.on('order-confirmed', (data) => {
-            const statusDiv = document.getElementById('status');
-            confirmSound.play().catch(()=>{});
-            
-            statusDiv.className = 'confirmed';
-            statusDiv.innerHTML = `✅ ΑΠΟΔΟΧΗ!<br>Ο οδηγός <span style="font-size:1.2em;">${data.driverName}</span> πήρε την παραγγελία.`;
-            
-            // Μετά από 10 δευτερόλεπτα επανέρχεται στην αναμονή
-            setTimeout(() => {
-                if(statusDiv.className === 'confirmed') {
-                    statusDiv.className = 'waiting';
-                    statusDiv.innerHTML = "Αναμονή για νέα παραγγελία...";
-                }
-            }, 10000);
+            document.getElementById('status').innerText = `✅ Ο ${data.driverName} ΤΗΝ ΠΗΡΕ!`;
+            document.getElementById('status').style.background = "#28a745";
         });
 
-        function logout() {
-            localStorage.clear();
-            location.reload();
-        }
-
-        window.onload = checkAuth;
+        window.onload = () => {
+            const auth = localStorage.getItem('shop_auth');
+            if(auth) {
+                document.getElementById('setup').style.display = 'none';
+                document.getElementById('controls').style.display = 'block';
+                socket.emit('login', JSON.parse(auth));
+            }
+        };
     </script>
 </body>
 </html>

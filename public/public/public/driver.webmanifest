@@ -1,7 +1,7 @@
 {
   "name": "Roasters Driver",
   "short_name": "Driver",
-  "start_url": "/public/driver.html",
+  "start_url": "/driver.html",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",

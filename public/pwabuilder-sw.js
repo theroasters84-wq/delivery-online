@@ -1,11 +1,10 @@
-const CACHE_NAME = "driver-cache-v1";
-const assets = ["/driver.html", "/manifest-driver.json"];
+const CACHE_NAME = "roasters-cache-v1";
+const assets = ["/driver.html", "/shop.html", "/manifest-driver.json", "/manifest-shop.json"];
 
 self.addEventListener("install", (event) => {
+  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(assets);
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(assets))
   );
 });
 

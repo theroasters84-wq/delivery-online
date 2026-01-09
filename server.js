@@ -7,8 +7,8 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { 
     cors: { origin: "*" },
-    pingTimeout: 60000, 
-    pingInterval: 10000 
+    pingTimeout: 120000, // Αυξημένο timeout για σταθερότητα
+    pingInterval: 30000 
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -24,16 +24,11 @@ io.on('connection', (socket) => {
         socket.join(room);
         socket.shopName = room;
         socket.driverName = data.name;
-        io.to(room).emit('driver-status', { name: data.name, status: 'online', socketId: socket.id });
-
-        // ΜΟΝΙΜΟ "ΣΠΡΩΞΙΜΟ" ΔΕΔΟΜΕΝΩΝ (High Priority Ping)
-        const keepAlive = setInterval(() => {
-            if (socket.connected) {
-                socket.emit('data-pulse', { timestamp: Date.now() });
-            } else {
-                clearInterval(keepAlive);
-            }
-        }, 15000);
+        io.to(room).emit('driver-status', { 
+            name: data.name, 
+            status: 'online', 
+            socketId: socket.id 
+        });
     });
 
     socket.on('send-private-order', (data) => {
@@ -47,10 +42,14 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         if (socket.driverName && socket.shopName) {
-            io.to(socket.shopName).emit('driver-status', { name: socket.driverName, status: 'offline', socketId: socket.id });
+            io.to(socket.shopName).emit('driver-status', { 
+                name: socket.driverName, 
+                status: 'offline', 
+                socketId: socket.id 
+            });
         }
     });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Super-Active Server Running`));
+server.listen(PORT, () => console.log(`Server for APK is Ready`));

@@ -1,17 +1,15 @@
 {
-  "short_name": "Shop",
-  "name": "Roasters Shop",
+  "name": "Roasters Driver",
+  "short_name": "Driver",
+  "start_url": "/driver.html",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/606/606548.png",
-      "type": "image/png",
+      "src": "https://img.icons8.com/color/512/motorcycle.png",
       "sizes": "512x512",
-      "purpose": "any"
+      "type": "image/png"
     }
-  ],
-  "start_url": "/shop.html",
-  "background_color": "#ffffff",
-  "display": "standalone",
-  "scope": "/",
-  "theme_color": "#3498db"
+  ]
 }

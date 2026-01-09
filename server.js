@@ -7,13 +7,14 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { 
     cors: { origin: "*" },
-    pingTimeout: 60000, 
-    pingInterval: 25000 
+    pingTimeout: 30000, 
+    pingInterval: 10000 
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
 io.on('connection', (socket) => {
+    
     socket.on('shop-login', (data) => {
         socket.join(data.shop.toLowerCase().trim());
     });
@@ -23,12 +24,18 @@ io.on('connection', (socket) => {
         socket.join(room);
         socket.shopName = room;
         socket.driverName = data.name;
-        io.to(room).emit('driver-status', { name: data.name, status: 'online', socketId: socket.id });
-    });
 
-    // Απλώς ακούει το σήμα για να κρατάει το socket ενεργό
-    socket.on('heartbeat', (data) => {
-        // console.log("Heartbeat from: " + data.name);
+        // Στέλνουμε επιβεβαίωση στο Shop
+        io.to(room).emit('driver-status', { name: data.name, status: 'online', socketId: socket.id });
+
+        // ΑΟΡΑΤΟ ΣΗΜΑ (Silent Ping) από τον Server προς τον Driver κάθε 15 δευτερόλεπτα
+        const keepAliveInterval = setInterval(() => {
+            if (socket.connected) {
+                socket.emit('silent-keep-alive');
+            } else {
+                clearInterval(keepAliveInterval);
+            }
+        }, 15000);
     });
 
     socket.on('send-private-order', (data) => {
@@ -48,4 +55,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server running`));
+server.listen(PORT, () => console.log(`Server with Keep-Alive running`));

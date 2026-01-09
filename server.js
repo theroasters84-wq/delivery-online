@@ -5,51 +5,47 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { 
-    cors: { origin: "*" },
-    pingTimeout: 120000, // Αυξημένο timeout για σταθερότητα
-    pingInterval: 30000 
+const io = new Server(server, {
+    pingTimeout: 30000,
+    pingInterval: 10000
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
 io.on('connection', (socket) => {
-    
-    socket.on('shop-login', (data) => {
-        socket.join(data.shop.toLowerCase().trim());
-    });
+    console.log('New connection:', socket.id);
 
+    // Login οδηγού
     socket.on('driver-login', (data) => {
-        const room = data.shop.toLowerCase().trim();
-        socket.join(room);
-        socket.shopName = room;
-        socket.driverName = data.name;
-        io.to(room).emit('driver-status', { 
-            name: data.name, 
-            status: 'online', 
-            socketId: socket.id 
-        });
+        socket.join(data.shop.toLowerCase());
+        console.log(`Driver ${data.name} joined shop: ${data.shop}`);
     });
 
-    socket.on('send-private-order', (data) => {
-        io.to(data.targetId).emit('new-order', { shop: data.shop });
+    // Heartbeat για να μην πέφτει η σύνδεση
+    socket.on('heartbeat', (data) => {
+        // Επιβεβαίωση σύνδεσης
     });
 
+    // Όταν το μαγαζί στέλνει παραγγελία
+    socket.on('new-order', (data) => {
+        const shopRoom = data.shopName.toLowerCase();
+        io.to(shopRoom).emit('new-order', data);
+        console.log(`Order sent to shop: ${shopRoom}`);
+    });
+
+    // Όταν ο οδηγός πατάει αποδοχή
     socket.on('order-accepted', (data) => {
-        const room = data.shopName || socket.shopName;
-        io.to(room).emit('order-confirmed', { driverName: data.driverName });
+        const shopRoom = data.shopName.toLowerCase();
+        io.to(shopRoom).emit('order-confirmed', data);
+        console.log(`Driver ${data.driverName} accepted order for ${shopRoom}`);
     });
 
     socket.on('disconnect', () => {
-        if (socket.driverName && socket.shopName) {
-            io.to(socket.shopName).emit('driver-status', { 
-                name: socket.driverName, 
-                status: 'offline', 
-                socketId: socket.id 
-            });
-        }
+        console.log('User disconnected');
     });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server for APK is Ready`));
+server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});

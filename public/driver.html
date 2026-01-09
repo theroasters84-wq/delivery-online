@@ -10,8 +10,10 @@
         .btn { background: #ffc107; color: #000; padding: 20px; border-radius: 15px; font-weight: bold; font-size: 1.2em; border: none; width: 80%; cursor: pointer; }
         input { width: 80%; padding: 15px; margin: 10px 0; border-radius: 10px; border: none; font-size: 1em; }
         #bot-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 2000; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        #accept-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: red; display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; animation: blink 0.5s infinite; }
-        @keyframes blink { 0% { background: red; } 50% { background: darkred; } 100% { background: red; } }
+        #accept-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: red; display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; animation: blink 0.4s infinite; }
+        @keyframes blink { 0% { background: red; } 50% { background: #400; } 100% { background: red; } }
+        #status-light { width: 12px; height: 12px; background: red; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .logout-link { color: #ff4757; text-decoration: underline; margin-top: 40px; background: none; border: none; font-size: 1em; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -19,47 +21,49 @@
     <div id="bot-overlay">
         <img src="https://img.icons8.com/color/512/motorcycle.png" width="100">
         <h2>ROASTERS DRIVER</h2>
-        <button class="btn" onclick="unlockAudio()">ΕΝΑΡΞΗ ΒΑΡΔΙΑΣ</button>
+        <button class="btn" onclick="unlockAudio()">ΕΝΕΡΓΟΠΟΙΗΣΗ</button>
     </div>
 
     <div id="login-ui" style="display:none;">
+        <h3>Σύνδεση Βάρδιας</h3>
         <input type="text" id="shop" placeholder="Μαγαζί">
         <input type="text" id="name" placeholder="Το όνομα σου">
         <input type="password" id="pass" placeholder="Κωδικός (1234)">
-        <button class="btn" style="background:#28a745; color:#fff;" onclick="login()">ONLINE</button>
+        <button class="btn" style="background:#28a745; color:#fff;" onclick="login()">ΣΥΝΔΕΣΗ & ONLINE</button>
     </div>
 
     <div id="active-ui" style="display:none;">
-        <h1 id="display-shop" style="color:#ffc107;"></h1>
-        <div style="color:#0f0; font-size: 1.5em; margin-bottom: 10px;">● ONLINE</div>
-        <p id="display-name"></p>
-        <p id="connection-status" style="color: #333; font-size: 0.7em;">Stable</p>
+        <h1 id="display-shop" style="color:#ffc107; margin-bottom: 5px;"></h1>
+        <div><span id="status-light"></span> <span id="conn-text">Σύνδεση...</span></div>
+        <p id="display-name" style="color: #888; font-size: 1.2em;"></p>
+        
+        <p style="font-size: 0.8em; color: #333; margin-top: 20px;">Μόνιμη επικοινωνία: Ενεργή</p>
+        
+        <button class="logout-link" onclick="logout()">ΕΞΟΔΟΣ ΑΠΟ ΒΑΡΔΙΑ</button>
     </div>
 
     <div id="accept-layer" onclick="acceptOrder()">
-        <h1 style="font-size: 3em;">ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ</h1>
-        <p>ΠΑΤΑ ΓΙΑ ΑΠΟΔΟΧΗ</p>
+        <h1 style="font-size: 3.5em; font-weight: 900;">ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ</h1>
+        <p style="font-size: 1.5em;">ΠΑΤΑ ΓΙΑ ΑΠΟΔΟΧΗ</p>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io({ 
-            reconnection: true, 
-            reconnectionAttempts: Infinity, 
-            reconnectionDelay: 500 
-        });
+        const socket = io({ reconnection: true, reconnectionDelay: 500 });
         const alarm = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
-
-        let wakeLock = null;
-        async function requestWakeLock() {
-            try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
-        }
+        let heartbeatInterval = null;
 
         function unlockAudio() {
             alarm.play().then(() => {
                 alarm.pause();
                 document.getElementById('bot-overlay').style.display = 'none';
-                document.getElementById('login-ui').style.display = 'block';
+                
+                // Αν έχει ήδη στοιχεία, μπες αυτόματα
+                if (localStorage.getItem('shop') && localStorage.getItem('name')) {
+                    startSession();
+                } else {
+                    document.getElementById('login-ui').style.display = 'block';
+                }
             });
         }
 
@@ -67,31 +71,47 @@
             const s = document.getElementById('shop').value.toLowerCase().trim();
             const n = document.getElementById('name').value.trim();
             const p = document.getElementById('pass').value;
+
             if (p !== "1234") return alert("Λάθος κωδικός!");
+            if (!s || !n) return alert("Συμπλήρωσε τα στοιχεία!");
             
             localStorage.setItem('shop', s);
             localStorage.setItem('name', n);
-            
+            startSession();
+        }
+
+        function startSession() {
+            const s = localStorage.getItem('shop');
+            const n = localStorage.getItem('name');
+
             document.getElementById('login-ui').style.display = 'none';
             document.getElementById('active-ui').style.display = 'block';
             document.getElementById('display-shop').innerText = s.toUpperCase();
             document.getElementById('display-name').innerText = n;
 
             socket.emit('driver-login', { shop: s, name: n });
-            requestWakeLock();
+            
+            // Ξεκίνα το δυνατό Heartbeat
+            if (heartbeatInterval) clearInterval(heartbeatInterval);
+            heartbeatInterval = setInterval(() => {
+                if (socket.connected) {
+                    socket.emit('force-alive', { name: n });
+                }
+            }, 5000);
         }
 
-        // ΛΗΨΗ ΑΟΡΑΤΟΥ ΣΗΜΑΤΟΣ (Keep-Alive)
-        socket.on('silent-keep-alive', () => {
-            console.log("Keep-alive received from server");
-            document.getElementById('connection-status').innerText = "Stable: " + new Date().toLocaleTimeString();
+        socket.on('alive-confirm', () => {
+            const light = document.getElementById('status-light');
+            light.style.background = '#0f0';
+            document.getElementById('conn-text').innerText = "ONLINE";
+            setTimeout(() => { light.style.background = '#080'; }, 200);
         });
 
         socket.on('new-order', () => {
             alarm.loop = true;
             alarm.play();
             document.getElementById('accept-layer').style.display = 'flex';
-            if(navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
+            if(navigator.vibrate) navigator.vibrate([1000, 500, 1000, 500, 1000]);
         });
 
         function acceptOrder() {
@@ -104,8 +124,17 @@
             });
         }
 
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') requestWakeLock();
+        function logout() {
+            if (confirm("Θέλεις να βγεις από τη βάρδια;")) {
+                clearInterval(heartbeatInterval);
+                localStorage.clear();
+                location.reload(); // Επιστροφή στην αρχή
+            }
+        }
+
+        socket.on('disconnect', () => {
+            document.getElementById('status-light').style.background = 'red';
+            document.getElementById('conn-text').innerText = "ΑΠΟΣΥΝΔΕΣΗ!";
         });
     </script>
 </body>

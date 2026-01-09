@@ -5,15 +5,36 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { 
-    cors: { origin: "*" },
-    pingTimeout: 60000,
-    pingInterval: 25000 
-});
+const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Συνάρτηση για αποστολή λίστας οδηγών στο Shop
+// ΑΥΤΟΜΑΤΟ MANIFEST ΓΙΑ ΤΟΝ DRIVER (Δεν χρειάζεται αρχείο πλέον)
+app.get('/manifest-driver.json', (req, res) => {
+    res.json({
+        "name": "Roasters Driver",
+        "short_name": "Driver",
+        "start_url": "/driver.html",
+        "display": "standalone",
+        "background_color": "#000000",
+        "theme_color": "#ffc107",
+        "icons": [{ "src": "https://img.icons8.com/color/192/motorcycle.png", "sizes": "192x192", "type": "image/png" }]
+    });
+});
+
+// ΑΥΤΟΜΑΤΟ MANIFEST ΓΙΑ TO SHOP
+app.get('/manifest-shop.json', (req, res) => {
+    res.json({
+        "name": "Roasters Shop",
+        "short_name": "Shop",
+        "start_url": "/shop.html",
+        "display": "standalone",
+        "background_color": "#1a1a1a",
+        "theme_color": "#ffc107",
+        "icons": [{ "src": "https://img.icons8.com/color/192/shop.png", "sizes": "192x192", "type": "image/png" }]
+    });
+});
+
 function sendUpdatedDriverList(io, room) {
     const clients = io.sockets.adapter.rooms.get(room);
     let drivers = [];
@@ -30,27 +51,19 @@ function sendUpdatedDriverList(io, room) {
 
 io.on('connection', (socket) => {
     socket.on('login', (data) => {
-        if(data.password !== "1234") {
-            socket.emit('auth-error', 'Λάθος Κωδικός!');
-            return;
-        }
-
+        if(data.password !== "1234") return;
         const room = data.shop.toLowerCase().trim();
         socket.join(room);
         socket.shop = room;
         socket.userName = data.name;
         socket.isDriver = data.isDriver;
-
-        console.log(`[LOGIN] ${data.name} στο ${room} (Driver: ${socket.isDriver})`);
         sendUpdatedDriverList(io, room);
     });
 
     socket.on('new-order', (data) => {
         if (data.targetDriverId) {
-            // Στόχευση συγκεκριμένου οδηγού
             io.to(data.targetDriverId).emit('new-order', data);
         } else {
-            // Backup: Αποστολή σε όλους στο δωμάτιο
             io.to(data.shopName.toLowerCase()).emit('new-order', data);
         }
     });
@@ -59,15 +72,10 @@ io.on('connection', (socket) => {
         io.to(data.shopName.toLowerCase()).emit('order-confirmed', data);
     });
 
-    // Το "Κρυφό" σήμα για να μένει ξύπνιος ο driver
-    socket.on('heartbeat', () => {
-        socket.emit('heartbeat-ack'); 
-    });
+    socket.on('heartbeat', () => { /* keep alive */ });
 
     socket.on('disconnect', () => {
-        if (socket.shop) {
-            sendUpdatedDriverList(io, socket.shop);
-        }
+        if (socket.shop) sendUpdatedDriverList(io, socket.shop);
     });
 });
 

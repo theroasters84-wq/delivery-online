@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roasters Shop</title>
+    <title>Shop Dashboard</title>
     <link rel="manifest" href="/manifest-shop.json">
     <style>
         body { background: #121212; color: white; font-family: sans-serif; text-align: center; padding: 20px; }
@@ -17,7 +17,7 @@
 <body>
 
     <div class="card">
-        <h2 style="color:#ffc107">SHOP DASHBOARD</h2>
+        <h2 style="color:#ffc107">ROASTERS SHOP</h2>
         <div id="login-section">
             <input type="text" id="sName" placeholder="ΜΑΓΑΖΙ">
             <input type="password" id="sPass" placeholder="ΚΩΔΙΚΟΣ">
@@ -25,10 +25,10 @@
         </div>
 
         <div id="shop-section" style="display:none;">
-            <div id="driver-list"><h4>ΟΔΗΓΟΙ ONLINE</h4></div>
-            <div id="status-box" style="margin-top:20px; color:#aaa;">Έτοιμο</div>
+            <div id="driver-list"><h4>ΑΝΑΖΗΤΗΣΗ ΟΔΗΓΩΝ...</h4></div>
+            <div id="status-box" style="margin-top:20px; color:#aaa; padding:10px; border-radius:8px;">Έτοιμο</div>
             <br>
-            <button onclick="localStorage.clear(); location.reload();" style="color:#444; background:none; border:none; text-decoration:underline;">Logout</button>
+            <button onclick="localStorage.clear(); location.reload();" style="color:#444; background:none; border:none; text-decoration:underline; cursor:pointer;">Logout</button>
         </div>
     </div>
 
@@ -38,8 +38,10 @@
         let shopData = null;
 
         function doLogin() {
-            shopData = { shop: document.getElementById('sName').value.trim(), password: document.getElementById('sPass').value.trim(), name: 'ΚΕΝΤΡΙΚΟ', isDriver: false };
-            if(shopData.password !== "1234") return alert("Λάθος!");
+            const s = document.getElementById('sName').value.trim();
+            const p = document.getElementById('sPass').value.trim();
+            if(p !== "1234") return alert("Λάθος κωδικός!");
+            shopData = { shop: s, password: p, name: 'ΚΕΝΤΡΙΚΟ', isDriver: false };
             localStorage.setItem('shop_auth', JSON.stringify(shopData));
             location.reload();
         }
@@ -47,6 +49,7 @@
         socket.on('update-drivers-detailed', (drivers) => {
             const list = document.getElementById('driver-list');
             list.innerHTML = "<h4>ΟΔΗΓΟΙ ONLINE</h4>";
+            if(drivers.length === 0) list.innerHTML += "<p style='color:#555'>Κανένας οδηγός</p>";
             drivers.forEach(d => {
                 list.innerHTML += `<div class="driver-box"><span>🛵 <b>${d.name}</b></span><button class="btn-call" onclick="callDriver('${d.id}', '${d.name}')">ΚΛΗΣΗ</button></div>`;
             });
@@ -54,12 +57,15 @@
 
         function callDriver(id, name) {
             socket.emit('new-order', { shopName: shopData.shop, targetDriverId: id });
-            document.getElementById('status-box').innerText = `📡 Καλείται ο ${name}...`;
+            document.getElementById('status-box').innerText = `📡 Κλήση στον ${name}...`;
+            document.getElementById('status-box').style.background = "#333";
         }
 
         socket.on('order-confirmed', (data) => {
-            document.getElementById('status-box').innerText = `✅ Ο ${data.driverName} ΑΠΟΔΕΧΤΗΚΕ!`;
-            document.getElementById('status-box').style.color = "#28a745";
+            const box = document.getElementById('status-box');
+            box.innerText = `✅ Ο ${data.driverName} ΑΠΟΔΕΧΤΗΚΕ!`;
+            box.style.background = "#28a745";
+            box.style.color = "white";
         });
 
         window.onload = () => {
@@ -71,8 +77,6 @@
                 socket.emit('login', shopData);
             }
         };
-
-        if ('serviceWorker' in navigator) navigator.serviceWorker.register('/pwabuilder-sw.js');
     </script>
 </body>
 </html>

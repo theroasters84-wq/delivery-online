@@ -1,25 +1,16 @@
 {
-  "name": "Roasters Driver App",
+  "name": "Roasters Driver",
   "short_name": "Driver",
-  "description": "Roasters Delivery Management",
-  "start_url": "/driver.html?mode=pwa",
+  "start_url": "/public/driver.html",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",
   "orientation": "portrait",
-  "scope": "/",
   "icons": [
     {
       "src": "https://img.icons8.com/color/512/motorcycle.png",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "https://img.icons8.com/color/192/motorcycle.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
+      "type": "image/png"
     }
   ]
 }

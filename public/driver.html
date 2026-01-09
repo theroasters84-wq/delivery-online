@@ -7,9 +7,10 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <link rel="manifest" href="/driver.webmanifest">
     <meta name="theme-color" content="#000000">
 
-    <link rel="manifest" href="/manifest-driver.json">
     <title>Roasters Driver</title>
     
     <style>
@@ -69,7 +70,7 @@
         <input type="password" id="pw" placeholder="Κωδικός">
         <input type="text" id="shop" placeholder="Μαγαζί">
         <input type="text" id="name" placeholder="Το Όνομά σου">
-        <button class="btn-action" style="background:#28a745; color:white;" onclick="login()">ONLINE</button>
+        <button class="btn-action" style="background:#28a745; color:white;" onclick="login()">ΣΥΝΔΕΣΗ</button>
     </div>
 
     <div id="active-ui" style="display:none;">
@@ -87,7 +88,7 @@
         const alarm = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
         let wakeLock = null;
 
-        // Service Worker για να επιτραπεί η εγκατάσταση PWA
+        // Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js').then(reg => reg.update());
@@ -100,7 +101,7 @@
                 document.getElementById('bot-overlay').style.display = 'none';
                 if(localStorage.getItem('is_logged_in')) start();
                 else document.getElementById('login-ui').style.display = 'block';
-            }).catch(() => alert("Πάτησε ξανά για τον ήχο!"));
+            });
         }
 
         function login() {
@@ -120,7 +121,6 @@
             
             socket.emit('driver-login', { name: name, shop: shop });
 
-            // Κρατάει την οθόνη αναμμένη
             if ('wakeLock' in navigator) {
                 try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
             }
@@ -129,7 +129,6 @@
         socket.on('new-order', () => {
             alarm.loop = true; alarm.play();
             document.getElementById('accept-layer').style.display = 'flex';
-            if(navigator.vibrate) navigator.vibrate([500, 500, 500]);
         });
 
         function handleAccept() {

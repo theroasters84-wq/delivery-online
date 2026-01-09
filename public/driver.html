@@ -23,7 +23,6 @@
     </div>
 
     <div id="login-ui" style="display:none;">
-        <h3>Σύνδεση</h3>
         <input type="text" id="shop" placeholder="Μαγαζί">
         <input type="text" id="name" placeholder="Το όνομά σου">
         <input type="password" id="pass" placeholder="Κωδικός (1234)">
@@ -34,7 +33,7 @@
         <h1 id="display-shop" style="color:#ffc107;"></h1>
         <p style="color:#0f0; font-size: 1.5em;">● ONLINE</p>
         <p id="display-name"></p>
-        <button onclick="location.reload()" style="background:none; border:none; color:red; text-decoration:underline; margin-top:50px;">Αποσύνδεση</button>
+        <p style="color: #444; font-size: 0.8em;">Heartbeat active...</p>
     </div>
 
     <div id="accept-layer" onclick="acceptOrder()">
@@ -44,7 +43,7 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io();
+        const socket = io({ reconnection: true, reconnectionAttempts: Infinity, reconnectionDelay: 1000 });
         const alarm = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
 
         let wakeLock = null;
@@ -64,10 +63,8 @@
             const s = document.getElementById('shop').value.toLowerCase().trim();
             const n = document.getElementById('name').value.trim();
             const p = document.getElementById('pass').value;
-
             if (p !== "1234") return alert("Λάθος κωδικός!");
-            if (!s || !n) return alert("Συμπλήρωσε τα πάντα!");
-
+            
             localStorage.setItem('shop', s);
             localStorage.setItem('name', n);
             
@@ -78,6 +75,11 @@
 
             socket.emit('driver-login', { shop: s, name: n });
             requestWakeLock();
+
+            // HEARTBEAT: Στέλνει σήμα κάθε 10 δευτερόλεπτα για να μην "κοιμηθεί" η σύνδεση
+            setInterval(() => {
+                socket.emit('heartbeat', { name: n });
+            }, 10000);
         }
 
         socket.on('new-order', () => {
@@ -96,6 +98,11 @@
                 shopName: localStorage.getItem('shop')
             });
         }
+
+        // Αν η οθόνη ξανανοίξει, ξαναζήτα το κλείδωμα οθόνης
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') requestWakeLock();
+        });
     </script>
 </body>
 </html>
